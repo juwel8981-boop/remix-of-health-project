@@ -3,7 +3,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { MainLayout } from "./components/layout/MainLayout";
 import Index from "./pages/Index";
+import Doctors from "./pages/Doctors";
+import Hospitals from "./pages/Hospitals";
+import VerifyDoctor from "./pages/VerifyDoctor";
+import Articles from "./pages/Articles";
+import PatientDashboard from "./pages/PatientDashboard";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -15,7 +23,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/doctors" element={<Doctors />} />
+            <Route path="/hospitals" element={<Hospitals />} />
+            <Route path="/diagnostics" element={<Hospitals />} />
+            <Route path="/verify-doctor" element={<VerifyDoctor />} />
+            <Route path="/articles" element={<Articles />} />
+            <Route path="/patient" element={<PatientDashboard />} />
+            <Route path="/doctor" element={<DoctorDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
