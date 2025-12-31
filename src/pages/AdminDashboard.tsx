@@ -27,12 +27,14 @@ const sidebarLinks = [
   { name: "Settings", icon: Settings, tab: "settings" },
 ];
 
-const stats = [
-  { label: "Total Hospitals", value: "534", change: "+12", icon: Building2 },
-  { label: "Registered Doctors", value: "10,234", change: "+156", icon: Stethoscope },
-  { label: "Diagnostic Centers", value: "892", change: "+28", icon: Users },
-  { label: "Active Users", value: "1.2M", change: "+15K", icon: TrendingUp },
-];
+interface DashboardStats {
+  totalDoctors: number;
+  approvedDoctors: number;
+  pendingDoctors: number;
+  totalPatients: number;
+  totalPosts: number;
+  approvedPosts: number;
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -40,6 +42,14 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalDoctors: 0,
+    approvedDoctors: 0,
+    pendingDoctors: 0,
+    totalPatients: 0,
+    totalPosts: 0,
+    approvedPosts: 0,
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -56,6 +66,59 @@ export default function AdminDashboard() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch dashboard stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch doctors count
+        const { count: totalDoctors } = await supabase
+          .from("doctors")
+          .select("*", { count: "exact", head: true });
+
+        const { count: approvedDoctors } = await supabase
+          .from("doctors")
+          .select("*", { count: "exact", head: true })
+          .eq("verification_status", "approved");
+
+        const { count: pendingDoctors } = await supabase
+          .from("doctors")
+          .select("*", { count: "exact", head: true })
+          .eq("verification_status", "pending");
+
+        // Fetch patients count
+        const { count: totalPatients } = await supabase
+          .from("patients")
+          .select("*", { count: "exact", head: true });
+
+        // Fetch posts count
+        const { count: totalPosts } = await supabase
+          .from("health_posts")
+          .select("*", { count: "exact", head: true });
+
+        const { count: approvedPosts } = await supabase
+          .from("health_posts")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "approved");
+
+        setStats({
+          totalDoctors: totalDoctors || 0,
+          approvedDoctors: approvedDoctors || 0,
+          pendingDoctors: pendingDoctors || 0,
+          totalPatients: totalPatients || 0,
+          totalPosts: totalPosts || 0,
+          approvedPosts: approvedPosts || 0,
+        });
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
+
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -172,26 +235,77 @@ export default function AdminDashboard() {
 
               {/* Stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {stats.map((stat, index) => (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="healthcare-card"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <stat.icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <span className="text-xs font-medium text-healthcare-green">
-                        {stat.change}
-                      </span>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0 }}
+                  className="healthcare-card"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Stethoscope className="w-5 h-5 text-primary" />
                     </div>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </motion.div>
-                ))}
+                    <span className="text-xs font-medium text-healthcare-green">
+                      {stats.approvedDoctors} approved
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalDoctors}</p>
+                  <p className="text-sm text-muted-foreground">Total Doctors</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="healthcare-card"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <Stethoscope className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <span className="text-xs font-medium text-amber-500">
+                      needs review
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{stats.pendingDoctors}</p>
+                  <p className="text-sm text-muted-foreground">Pending Doctors</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="healthcare-card"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-secondary" />
+                    </div>
+                    <span className="text-xs font-medium text-healthcare-green">
+                      active
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalPatients}</p>
+                  <p className="text-sm text-muted-foreground">Registered Patients</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="healthcare-card"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-accent" />
+                    </div>
+                    <span className="text-xs font-medium text-healthcare-green">
+                      {stats.approvedPosts} published
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalPosts}</p>
+                  <p className="text-sm text-muted-foreground">Health Posts</p>
+                </motion.div>
               </div>
 
               {/* Activity Feed & Quick Actions */}

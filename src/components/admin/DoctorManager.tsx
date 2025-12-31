@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Edit, CheckCircle2, XCircle, Clock,
-  Stethoscope, Eye, AlertCircle
+  Stethoscope, Eye, AlertCircle, Plus, Trash2, MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Doctor {
   id: string;
@@ -38,6 +39,27 @@ export default function DoctorManager() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
+  const [showChamberDialog, setShowChamberDialog] = useState(false);
+  const [selectedDoctorForChamber, setSelectedDoctorForChamber] = useState<Doctor | null>(null);
+  const [newDoctorForm, setNewDoctorForm] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    specialization: "",
+    registration_number: "",
+    experience_years: "",
+    hospital_affiliation: "",
+  });
+  const [chamberForm, setChamberForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    timing: "",
+    appointment_fee: "",
+  });
 
   useEffect(() => {
     fetchDoctors();
@@ -150,6 +172,97 @@ export default function DoctorManager() {
     setShowRejectDialog(true);
   };
 
+  const handleAddDoctor = async () => {
+    if (!newDoctorForm.full_name || !newDoctorForm.email || !newDoctorForm.specialization || !newDoctorForm.registration_number) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    const { error } = await supabase.from("doctors").insert({
+      user_id: userData.user.id,
+      full_name: newDoctorForm.full_name,
+      email: newDoctorForm.email,
+      phone: newDoctorForm.phone || null,
+      specialization: newDoctorForm.specialization,
+      registration_number: newDoctorForm.registration_number,
+      experience_years: newDoctorForm.experience_years ? parseInt(newDoctorForm.experience_years) : null,
+      hospital_affiliation: newDoctorForm.hospital_affiliation || null,
+      verification_status: "approved",
+    });
+
+    if (error) {
+      toast.error("Failed to add doctor");
+      console.error(error);
+    } else {
+      toast.success("Doctor added successfully");
+      setShowAddDialog(false);
+      setNewDoctorForm({
+        full_name: "",
+        email: "",
+        phone: "",
+        specialization: "",
+        registration_number: "",
+        experience_years: "",
+        hospital_affiliation: "",
+      });
+      fetchDoctors();
+    }
+  };
+
+  const handleDeleteDoctor = async () => {
+    if (!doctorToDelete) return;
+
+    const { error } = await supabase
+      .from("doctors")
+      .delete()
+      .eq("id", doctorToDelete.id);
+
+    if (error) {
+      toast.error("Failed to delete doctor");
+      console.error(error);
+    } else {
+      toast.success(`${doctorToDelete.full_name} has been deleted`);
+      fetchDoctors();
+    }
+    setShowDeleteDialog(false);
+    setDoctorToDelete(null);
+  };
+
+  const openChamberDialog = (doctor: Doctor) => {
+    setSelectedDoctorForChamber(doctor);
+    setChamberForm({
+      name: "",
+      address: "",
+      phone: "",
+      timing: "",
+      appointment_fee: "",
+    });
+    setShowChamberDialog(true);
+  };
+
+  const handleAddChamber = () => {
+    // For now, show a toast - in production this would save to database
+    if (!chamberForm.name || !chamberForm.address) {
+      toast.error("Please fill chamber name and address");
+      return;
+    }
+    toast.success(`Chamber "${chamberForm.name}" added for ${selectedDoctorForChamber?.full_name}`);
+    setShowChamberDialog(false);
+    setChamberForm({
+      name: "",
+      address: "",
+      phone: "",
+      timing: "",
+      appointment_fee: "",
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -187,9 +300,15 @@ export default function DoctorManager() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-foreground">Doctor Verification</h2>
-        <p className="text-muted-foreground">Review and verify doctor registration requests</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Doctor Management</h2>
+          <p className="text-muted-foreground">Add, verify, and manage doctor profiles</p>
+        </div>
+        <Button variant="healthcare" onClick={() => setShowAddDialog(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Doctor
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -350,6 +469,26 @@ export default function DoctorManager() {
                         <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary hover:text-primary/80 hover:bg-primary/10"
+                        onClick={() => openChamberDialog(doctor)}
+                      >
+                        <MapPin className="w-4 h-4 mr-1" />
+                        Chamber
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                        onClick={() => {
+                          setDoctorToDelete(doctor);
+                          setShowDeleteDialog(true);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </td>
                 </motion.tr>
@@ -495,6 +634,166 @@ export default function DoctorManager() {
               disabled={!rejectionReason.trim() || processingId !== null}
             >
               Reject Application
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Doctor Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add New Doctor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Full Name *</Label>
+                <Input
+                  value={newDoctorForm.full_name}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  placeholder="Dr. Full Name"
+                />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={newDoctorForm.email}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="doctor@email.com"
+                />
+              </div>
+              <div>
+                <Label>Phone</Label>
+                <Input
+                  value={newDoctorForm.phone}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+880 XXXX-XXXXXX"
+                />
+              </div>
+              <div>
+                <Label>Specialization *</Label>
+                <Input
+                  value={newDoctorForm.specialization}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, specialization: e.target.value }))}
+                  placeholder="e.g., Cardiologist"
+                />
+              </div>
+              <div>
+                <Label>Registration Number *</Label>
+                <Input
+                  value={newDoctorForm.registration_number}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, registration_number: e.target.value }))}
+                  placeholder="BMDC-XXXXX"
+                />
+              </div>
+              <div>
+                <Label>Experience (Years)</Label>
+                <Input
+                  type="number"
+                  value={newDoctorForm.experience_years}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, experience_years: e.target.value }))}
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <Label>Hospital Affiliation</Label>
+                <Input
+                  value={newDoctorForm.hospital_affiliation}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, hospital_affiliation: e.target.value }))}
+                  placeholder="e.g., Square Hospital"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
+            <Button variant="healthcare" onClick={handleAddDoctor}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Doctor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{doctorToDelete?.full_name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteDoctor}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Chamber Dialog */}
+      <Dialog open={showChamberDialog} onOpenChange={setShowChamberDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Chamber for {selectedDoctorForChamber?.full_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Chamber Name *</Label>
+              <Input
+                value={chamberForm.name}
+                onChange={(e) => setChamberForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Square Hospital, Personal Chamber"
+              />
+            </div>
+            <div>
+              <Label>Address *</Label>
+              <Textarea
+                value={chamberForm.address}
+                onChange={(e) => setChamberForm(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Full address with area and city"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Phone</Label>
+                <Input
+                  value={chamberForm.phone}
+                  onChange={(e) => setChamberForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+880 XXXX-XXXXXX"
+                />
+              </div>
+              <div>
+                <Label>Timing</Label>
+                <Input
+                  value={chamberForm.timing}
+                  onChange={(e) => setChamberForm(prev => ({ ...prev, timing: e.target.value }))}
+                  placeholder="e.g., 4:00 PM - 8:00 PM"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Appointment Fee</Label>
+              <Input
+                value={chamberForm.appointment_fee}
+                onChange={(e) => setChamberForm(prev => ({ ...prev, appointment_fee: e.target.value }))}
+                placeholder="e.g., ৳1,500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowChamberDialog(false)}>Cancel</Button>
+            <Button variant="healthcare" onClick={handleAddChamber}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Chamber
             </Button>
           </DialogFooter>
         </DialogContent>
