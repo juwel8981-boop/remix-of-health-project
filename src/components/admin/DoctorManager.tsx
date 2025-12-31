@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Search, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, 
-  Filter, ChevronDown, Save, X, Star, Stethoscope
+  Search, Edit, CheckCircle2, XCircle, Clock,
+  Stethoscope, Eye, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,196 +10,199 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-  hospital: string;
-  area: string;
-  rating: number;
-  reviews: number;
-  verified: boolean;
-  experience: string;
-  fee: string;
-  available: boolean;
-  image: string;
-  status: "approved" | "pending" | "rejected";
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  specialization: string;
+  registration_number: string;
+  experience_years: number | null;
+  hospital_affiliation: string | null;
+  documents_url: string | null;
+  verification_status: string;
+  rejection_reason: string | null;
+  created_at: string;
 }
 
-const specialties = [
-  "General Physician",
-  "Cardiologist",
-  "Neurologist",
-  "Pediatrician",
-  "Dermatologist",
-  "Orthopedic",
-  "Gynecologist",
-  "ENT Specialist",
-  "Psychiatrist",
-];
-
-const areas = ["Dhaka", "Chittagong", "Sylhet", "Rajshahi", "Khulna", "Barisal", "Rangpur", "Mymensingh"];
-
-const initialDoctors: Doctor[] = [
-  {
-    id: 1,
-    name: "Dr. Fazle Rabbi Chowdhury",
-    specialty: "Cardiologist",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 234,
-    verified: true,
-    experience: "22 years",
-    fee: "৳2,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-    status: "approved",
-  },
-  {
-    id: 2,
-    name: "Dr. Mir Jamal Uddin",
-    specialty: "Cardiologist",
-    hospital: "United Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 189,
-    verified: true,
-    experience: "18 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-    status: "approved",
-  },
-  {
-    id: 3,
-    name: "Dr. Aminul Islam",
-    specialty: "Dermatologist",
-    hospital: "Labaid Hospital",
-    area: "Dhaka",
-    rating: 4.5,
-    reviews: 98,
-    verified: false,
-    experience: "10 years",
-    fee: "৳1,200",
-    available: true,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-    status: "pending",
-  },
-  {
-    id: 4,
-    name: "Dr. Rubina Akter",
-    specialty: "Gynecologist",
-    hospital: "United Hospital",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 156,
-    verified: true,
-    experience: "15 years",
-    fee: "৳1,800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face",
-    status: "approved",
-  },
-];
-
 export default function DoctorManager() {
-  const [doctors, setDoctors] = useState<Doctor[]>(initialDoctors);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterSpecialty, setFilterSpecialty] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
-  const [isAddingDoctor, setIsAddingDoctor] = useState(false);
-  const [doctorForm, setDoctorForm] = useState<Partial<Doctor>>({});
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("doctors")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to fetch doctors");
+      console.error(error);
+    } else {
+      setDoctors(data || []);
+    }
+    setLoading(false);
+  };
 
   const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch =
-      doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.hospital.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSpecialty = filterSpecialty === "all" || doctor.specialty === filterSpecialty;
-    const matchesStatus = filterStatus === "all" || doctor.status === filterStatus;
-    return matchesSearch && matchesSpecialty && matchesStatus;
+      doctor.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doctor.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doctor.registration_number.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === "all" || doctor.verification_status === filterStatus;
+    return matchesSearch && matchesStatus;
   });
 
-  const handleEditDoctor = (doctor: Doctor) => {
-    setEditingDoctor(doctor);
-    setDoctorForm({ ...doctor });
-  };
+  const pendingCount = doctors.filter(d => d.verification_status === "pending").length;
+  const approvedCount = doctors.filter(d => d.verification_status === "approved").length;
+  const rejectedCount = doctors.filter(d => d.verification_status === "rejected").length;
 
-  const handleAddDoctor = () => {
-    setIsAddingDoctor(true);
-    setDoctorForm({
-      name: "",
-      specialty: "",
-      hospital: "",
-      area: "",
-      rating: 0,
-      reviews: 0,
-      verified: false,
-      experience: "",
-      fee: "",
-      available: true,
-      image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-      status: "pending",
-    });
-  };
+  const handleApprove = async (doctor: Doctor) => {
+    setProcessingId(doctor.id);
+    const { error } = await supabase
+      .from("doctors")
+      .update({ 
+        verification_status: "approved",
+        rejection_reason: null 
+      })
+      .eq("id", doctor.id);
 
-  const handleSaveDoctor = () => {
-    if (editingDoctor) {
-      setDoctors((prev) =>
-        prev.map((d) => (d.id === editingDoctor.id ? { ...d, ...doctorForm } as Doctor : d))
-      );
-      setEditingDoctor(null);
-    } else if (isAddingDoctor) {
-      const newDoctor: Doctor = {
-        id: Date.now(),
-        name: doctorForm.name || "",
-        specialty: doctorForm.specialty || "",
-        hospital: doctorForm.hospital || "",
-        area: doctorForm.area || "",
-        rating: doctorForm.rating || 0,
-        reviews: doctorForm.reviews || 0,
-        verified: doctorForm.verified ?? false,
-        experience: doctorForm.experience || "",
-        fee: doctorForm.fee || "",
-        available: doctorForm.available ?? true,
-        image: doctorForm.image || "",
-        status: doctorForm.status || "pending",
-      };
-      setDoctors((prev) => [newDoctor, ...prev]);
-      setIsAddingDoctor(false);
+    if (error) {
+      toast.error("Failed to approve doctor");
+      console.error(error);
+    } else {
+      toast.success(`${doctor.full_name} has been approved`);
+      fetchDoctors();
     }
-    setDoctorForm({});
+    setProcessingId(null);
   };
 
-  const handleDeleteDoctor = (id: number) => {
-    setDoctors((prev) => prev.filter((d) => d.id !== id));
+  const handleReject = async () => {
+    if (!selectedDoctor || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    setProcessingId(selectedDoctor.id);
+    const { error } = await supabase
+      .from("doctors")
+      .update({ 
+        verification_status: "rejected",
+        rejection_reason: rejectionReason 
+      })
+      .eq("id", selectedDoctor.id);
+
+    if (error) {
+      toast.error("Failed to reject doctor");
+      console.error(error);
+    } else {
+      toast.success(`${selectedDoctor.full_name} has been rejected`);
+      fetchDoctors();
+    }
+    setShowRejectDialog(false);
+    setSelectedDoctor(null);
+    setRejectionReason("");
+    setProcessingId(null);
   };
 
-  const handleStatusChange = (id: number, status: "approved" | "pending" | "rejected") => {
-    setDoctors((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? { ...d, status, verified: status === "approved" }
-          : d
-      )
+  const openRejectDialog = (doctor: Doctor) => {
+    setSelectedDoctor(doctor);
+    setRejectionReason(doctor.rejection_reason || "");
+    setShowRejectDialog(true);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+            <CheckCircle2 className="w-3 h-3" />
+            Approved
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            <XCircle className="w-3 h-3" />
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <Clock className="w-3 h-3" />
+            Pending
+          </span>
+        );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Doctor Management</h2>
-          <p className="text-muted-foreground">Manage all registered doctors and their information</p>
+      <div>
+        <h2 className="text-xl font-bold text-foreground">Doctor Verification</h2>
+        <p className="text-muted-foreground">Review and verify doctor registration requests</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingCount}</p>
+              <p className="text-sm text-amber-600 dark:text-amber-500">Pending</p>
+            </div>
+          </div>
         </div>
-        <Button variant="healthcare" onClick={handleAddDoctor}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Doctor
-        </Button>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-700 dark:text-green-400">{approvedCount}</p>
+              <p className="text-sm text-green-600 dark:text-green-500">Approved</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+              <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">{rejectedCount}</p>
+              <p className="text-sm text-red-600 dark:text-red-500">Rejected</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -207,31 +210,20 @@ export default function DoctorManager() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
-            placeholder="Search doctors..."
+            placeholder="Search by name, email, or registration number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        <Select value={filterSpecialty} onValueChange={setFilterSpecialty}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Specialty" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Specialties</SelectItem>
-            {specialties.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
@@ -244,9 +236,8 @@ export default function DoctorManager() {
             <thead className="bg-muted">
               <tr>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Doctor</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Specialty</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Hospital</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Rating</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Specialization</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Registration #</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
                 <th className="text-right py-4 px-4 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -260,77 +251,80 @@ export default function DoctorManager() {
                   className="border-t border-border hover:bg-muted/50 transition-colors"
                 >
                   <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={doctor.image}
-                        alt={doctor.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="font-medium text-foreground">{doctor.name}</p>
-                        <p className="text-sm text-muted-foreground">{doctor.experience}</p>
-                      </div>
+                    <div>
+                      <p className="font-medium text-foreground">{doctor.full_name}</p>
+                      <p className="text-sm text-muted-foreground">{doctor.email}</p>
                     </div>
                   </td>
-                  <td className="py-4 px-4 text-foreground">{doctor.specialty}</td>
-                  <td className="py-4 px-4 text-muted-foreground">{doctor.hospital}</td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-accent fill-accent" />
-                      <span className="font-medium text-foreground">{doctor.rating}</span>
-                      <span className="text-muted-foreground">({doctor.reviews})</span>
-                    </div>
+                  <td className="py-4 px-4 text-foreground">{doctor.specialization}</td>
+                  <td className="py-4 px-4 text-muted-foreground font-mono text-sm">
+                    {doctor.registration_number}
                   </td>
                   <td className="py-4 px-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        doctor.status === "approved"
-                          ? "bg-healthcare-green-light text-healthcare-green"
-                          : doctor.status === "pending"
-                          ? "bg-healthcare-orange-light text-accent"
-                          : "bg-destructive/10 text-destructive"
-                      }`}
-                    >
-                      {doctor.status}
-                    </span>
+                    {getStatusBadge(doctor.verification_status)}
+                    {doctor.rejection_reason && (
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[200px] truncate">
+                        {doctor.rejection_reason}
+                      </p>
+                    )}
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex justify-end gap-2">
-                      {doctor.status === "pending" && (
+                      {doctor.verification_status === "pending" && (
                         <>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-healthcare-green"
-                            onClick={() => handleStatusChange(doctor.id, "approved")}
+                            size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                            onClick={() => handleApprove(doctor)}
+                            disabled={processingId === doctor.id}
                           >
-                            <CheckCircle2 className="w-4 h-4" />
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Approve
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleStatusChange(doctor.id, "rejected")}
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                            onClick={() => openRejectDialog(doctor)}
+                            disabled={processingId === doctor.id}
                           >
-                            <XCircle className="w-4 h-4" />
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
                           </Button>
                         </>
                       )}
+                      {doctor.verification_status === "rejected" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                          onClick={() => handleApprove(doctor)}
+                          disabled={processingId === doctor.id}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Approve
+                        </Button>
+                      )}
+                      {doctor.verification_status === "approved" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                          onClick={() => openRejectDialog(doctor)}
+                          disabled={processingId === doctor.id}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Revoke
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEditDoctor(doctor)}
+                        size="sm"
+                        onClick={() => setSelectedDoctor(doctor)}
                       >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleDeleteDoctor(doctor.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
                       </Button>
                     </div>
                   </td>
@@ -343,168 +337,140 @@ export default function DoctorManager() {
         {filteredDoctors.length === 0 && (
           <div className="text-center py-12">
             <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No doctors found matching your criteria.</p>
+            <p className="text-muted-foreground">
+              {doctors.length === 0 
+                ? "No doctor registrations yet." 
+                : "No doctors found matching your criteria."}
+            </p>
           </div>
         )}
       </div>
 
-      {/* Edit/Add Doctor Dialog */}
-      <Dialog
-        open={editingDoctor !== null || isAddingDoctor}
-        onOpenChange={() => {
-          setEditingDoctor(null);
-          setIsAddingDoctor(false);
-          setDoctorForm({});
-        }}
-      >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* View Doctor Dialog */}
+      <Dialog open={selectedDoctor !== null && !showRejectDialog} onOpenChange={() => setSelectedDoctor(null)}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editingDoctor ? "Edit Doctor" : "Add New Doctor"}
+            <DialogTitle>Doctor Details</DialogTitle>
+          </DialogHeader>
+          {selectedDoctor && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Full Name</Label>
+                  <p className="font-medium">{selectedDoctor.full_name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="font-medium">{selectedDoctor.email}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Phone</Label>
+                  <p className="font-medium">{selectedDoctor.phone || "N/A"}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Specialization</Label>
+                  <p className="font-medium">{selectedDoctor.specialization}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Registration Number</Label>
+                  <p className="font-medium font-mono">{selectedDoctor.registration_number}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Experience</Label>
+                  <p className="font-medium">
+                    {selectedDoctor.experience_years ? `${selectedDoctor.experience_years} years` : "N/A"}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground">Hospital Affiliation</Label>
+                  <p className="font-medium">{selectedDoctor.hospital_affiliation || "N/A"}</p>
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground">Status</Label>
+                  <div className="mt-1">{getStatusBadge(selectedDoctor.verification_status)}</div>
+                </div>
+                {selectedDoctor.rejection_reason && (
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Rejection Reason</Label>
+                    <p className="font-medium text-red-600">{selectedDoctor.rejection_reason}</p>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground">Registered On</Label>
+                  <p className="font-medium">
+                    {new Date(selectedDoctor.created_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                {selectedDoctor.verification_status !== "approved" && (
+                  <Button
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      handleApprove(selectedDoctor);
+                      setSelectedDoctor(null);
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Approve
+                  </Button>
+                )}
+                {selectedDoctor.verification_status !== "rejected" && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setShowRejectDialog(true);
+                    }}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Reject
+                  </Button>
+                )}
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="w-5 h-5" />
+              Reject Doctor Application
             </DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4">
+            <p className="text-muted-foreground">
+              Please provide a reason for rejecting <strong>{selectedDoctor?.full_name}</strong>'s application.
+              This will be visible to the doctor.
+            </p>
             <div>
-              <Label>Full Name</Label>
-              <Input
-                value={doctorForm.name || ""}
-                onChange={(e) => setDoctorForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Dr. Full Name"
+              <Label>Rejection Reason</Label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="e.g., Invalid registration number, incomplete documentation..."
+                rows={3}
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Specialty</Label>
-                <Select
-                  value={doctorForm.specialty || ""}
-                  onValueChange={(value) => setDoctorForm((prev) => ({ ...prev, specialty: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select specialty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {specialties.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Area</Label>
-                <Select
-                  value={doctorForm.area || ""}
-                  onValueChange={(value) => setDoctorForm((prev) => ({ ...prev, area: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select area" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areas.map((a) => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label>Hospital/Clinic</Label>
-              <Input
-                value={doctorForm.hospital || ""}
-                onChange={(e) => setDoctorForm((prev) => ({ ...prev, hospital: e.target.value }))}
-                placeholder="Primary hospital or clinic"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Experience</Label>
-                <Input
-                  value={doctorForm.experience || ""}
-                  onChange={(e) => setDoctorForm((prev) => ({ ...prev, experience: e.target.value }))}
-                  placeholder="e.g., 15 years"
-                />
-              </div>
-              <div>
-                <Label>Consultation Fee</Label>
-                <Input
-                  value={doctorForm.fee || ""}
-                  onChange={(e) => setDoctorForm((prev) => ({ ...prev, fee: e.target.value }))}
-                  placeholder="e.g., ৳1,500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Profile Image URL</Label>
-              <Input
-                value={doctorForm.image || ""}
-                onChange={(e) => setDoctorForm((prev) => ({ ...prev, image: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="verified"
-                  checked={doctorForm.verified ?? false}
-                  onCheckedChange={(checked) =>
-                    setDoctorForm((prev) => ({ ...prev, verified: checked === true }))
-                  }
-                />
-                <Label htmlFor="verified" className="cursor-pointer">Verified</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="available"
-                  checked={doctorForm.available ?? true}
-                  onCheckedChange={(checked) =>
-                    setDoctorForm((prev) => ({ ...prev, available: checked === true }))
-                  }
-                />
-                <Label htmlFor="available" className="cursor-pointer">Available</Label>
-              </div>
-            </div>
-
-            {editingDoctor && (
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={doctorForm.status || "pending"}
-                  onValueChange={(value) =>
-                    setDoctorForm((prev) => ({ ...prev, status: value as Doctor["status"] }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
-
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditingDoctor(null);
-                setIsAddingDoctor(false);
-                setDoctorForm({});
-              }}
-            >
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
               Cancel
             </Button>
-            <Button variant="healthcare" onClick={handleSaveDoctor}>
-              <Save className="w-4 h-4 mr-2" />
-              Save Doctor
+            <Button 
+              variant="destructive" 
+              onClick={handleReject}
+              disabled={!rejectionReason.trim() || processingId !== null}
+            >
+              Reject Application
             </Button>
           </DialogFooter>
         </DialogContent>
