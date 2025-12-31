@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   User, Calendar, FileText, Settings, Clock, Users,
   Star, MapPin, CheckCircle2, Edit, Plus, ChevronRight,
-  TrendingUp, Bell
+  TrendingUp, Bell, AlertCircle, XCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const sidebarLinks = [
   { name: "Overview", icon: TrendingUp, href: "/doctor" },
@@ -71,7 +72,122 @@ const recentReviews = [
   },
 ];
 
+interface DoctorProfile {
+  full_name: string;
+  specialization: string;
+  verification_status: string;
+  rejection_reason: string | null;
+}
+
 export default function DoctorDashboard() {
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDoctorProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("doctors")
+          .select("full_name, specialization, verification_status, rejection_reason")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        setDoctorProfile(data);
+      }
+      setLoading(false);
+    };
+
+    fetchDoctorProfile();
+  }, []);
+
+  const renderVerificationBanner = () => {
+    if (loading || !doctorProfile) return null;
+
+    if (doctorProfile.verification_status === "pending") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-amber-800 dark:text-amber-300">Verification Pending</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                Your account is currently under review. You'll have full access to all features once an admin approves your registration. This usually takes 1-2 business days.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (doctorProfile.verification_status === "rejected") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+              <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-red-800 dark:text-red-300">Verification Rejected</h3>
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                Your registration was not approved.
+                {doctorProfile.rejection_reason && (
+                  <span className="block mt-2 font-medium">
+                    Reason: {doctorProfile.rejection_reason}
+                  </span>
+                )}
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-500 mt-2">
+                Please contact support if you believe this is an error or to submit updated documentation.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (doctorProfile.verification_status === "approved") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-green-800 dark:text-green-300">Verified Doctor</h3>
+              <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+                Your account is verified. You have full access to all doctor features.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-muted">
       <div className="flex">
@@ -79,17 +195,21 @@ export default function DoctorDashboard() {
         <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border min-h-screen sticky top-16 md:top-20">
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <img
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face"
-                alt="Doctor"
-                className="w-12 h-12 rounded-full object-cover"
-              />
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="w-6 h-6 text-primary" />
+              </div>
               <div>
                 <div className="flex items-center gap-1">
-                  <p className="font-semibold text-foreground">Dr. Sarah Ahmed</p>
-                  <CheckCircle2 className="w-4 h-4 text-healthcare-green" />
+                  <p className="font-semibold text-foreground">
+                    {doctorProfile?.full_name || "Doctor"}
+                  </p>
+                  {doctorProfile?.verification_status === "approved" && (
+                    <CheckCircle2 className="w-4 h-4 text-healthcare-green" />
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground">Cardiologist</p>
+                <p className="text-sm text-muted-foreground">
+                  {doctorProfile?.specialization || "Specialist"}
+                </p>
               </div>
             </div>
           </div>
@@ -113,6 +233,9 @@ export default function DoctorDashboard() {
 
         {/* Main Content */}
         <main className="flex-1 p-6 lg:p-8">
+          {/* Verification Status Banner */}
+          {renderVerificationBanner()}
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <motion.div
@@ -120,10 +243,12 @@ export default function DoctorDashboard() {
               animate={{ opacity: 1, y: 0 }}
             >
               <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-1">
-                Good Morning, Dr. Ahmed!
+                Welcome, {doctorProfile?.full_name?.split(' ')[0] || "Doctor"}!
               </h1>
               <p className="text-muted-foreground">
-                You have 8 appointments scheduled for today.
+                {doctorProfile?.verification_status === "approved" 
+                  ? "You have 8 appointments scheduled for today."
+                  : "Complete your profile while waiting for verification."}
               </p>
             </motion.div>
 
