@@ -2,66 +2,126 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Brain, Sparkles, ArrowRight, Stethoscope, Heart, Activity, 
-  Thermometer, HeadphonesIcon, Eye, Bone, Baby, Clock, CheckCircle2, MapPin
+  Thermometer, HeadphonesIcon, Eye, Bone, Baby, Clock, CheckCircle2, MapPin, 
+  Send, Languages
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const symptomCategories = [
-  { id: "general", name: "General", icon: Activity, symptoms: ["Fever", "Fatigue", "Weight Loss", "Weakness"] },
-  { id: "respiratory", name: "Respiratory", icon: HeadphonesIcon, symptoms: ["Cough", "Shortness of Breath", "Chest Pain", "Wheezing"] },
-  { id: "cardiac", name: "Heart", icon: Heart, symptoms: ["Palpitations", "Chest Tightness", "Dizziness", "Swelling"] },
-  { id: "digestive", name: "Digestive", icon: Thermometer, symptoms: ["Stomach Pain", "Nausea", "Bloating", "Diarrhea"] },
-  { id: "neurological", name: "Neurological", icon: Brain, symptoms: ["Headache", "Numbness", "Memory Issues", "Tremors"] },
-  { id: "vision", name: "Vision", icon: Eye, symptoms: ["Blurred Vision", "Eye Pain", "Redness", "Light Sensitivity"] },
-  { id: "musculoskeletal", name: "Bones & Joints", icon: Bone, symptoms: ["Joint Pain", "Back Pain", "Stiffness", "Swelling"] },
-  { id: "pediatric", name: "Child Health", icon: Baby, symptoms: ["Growth Issues", "Feeding Problems", "Rashes", "Behavioral"] },
+  { id: "general", name: "General", nameBn: "সাধারণ", icon: Activity, symptoms: [
+    { en: "Fever", bn: "জ্বর" },
+    { en: "Fatigue", bn: "ক্লান্তি" },
+    { en: "Weight Loss", bn: "ওজন কমা" },
+    { en: "Weakness", bn: "দুর্বলতা" }
+  ]},
+  { id: "respiratory", name: "Respiratory", nameBn: "শ্বাসতন্ত্র", icon: HeadphonesIcon, symptoms: [
+    { en: "Cough", bn: "কাশি" },
+    { en: "Shortness of Breath", bn: "শ্বাসকষ্ট" },
+    { en: "Chest Pain", bn: "বুকে ব্যথা" },
+    { en: "Wheezing", bn: "শ্বাসে শব্দ" }
+  ]},
+  { id: "cardiac", name: "Heart", nameBn: "হৃদয়", icon: Heart, symptoms: [
+    { en: "Palpitations", bn: "বুক ধড়ফড়" },
+    { en: "Chest Tightness", bn: "বুকে চাপ" },
+    { en: "Dizziness", bn: "মাথা ঘোরা" },
+    { en: "Swelling", bn: "ফোলা" }
+  ]},
+  { id: "digestive", name: "Digestive", nameBn: "হজম", icon: Thermometer, symptoms: [
+    { en: "Stomach Pain", bn: "পেটে ব্যথা" },
+    { en: "Nausea", bn: "বমি বমি ভাব" },
+    { en: "Bloating", bn: "পেট ফাঁপা" },
+    { en: "Diarrhea", bn: "ডায়রিয়া" }
+  ]},
+  { id: "neurological", name: "Neurological", nameBn: "স্নায়বিক", icon: Brain, symptoms: [
+    { en: "Headache", bn: "মাথা ব্যথা" },
+    { en: "Numbness", bn: "অসাড়তা" },
+    { en: "Memory Issues", bn: "স্মৃতি সমস্যা" },
+    { en: "Tremors", bn: "কাঁপুনি" }
+  ]},
+  { id: "vision", name: "Vision", nameBn: "দৃষ্টি", icon: Eye, symptoms: [
+    { en: "Blurred Vision", bn: "ঝাপসা দৃষ্টি" },
+    { en: "Eye Pain", bn: "চোখে ব্যথা" },
+    { en: "Redness", bn: "চোখ লাল" },
+    { en: "Light Sensitivity", bn: "আলো সংবেদনশীলতা" }
+  ]},
+  { id: "musculoskeletal", name: "Bones & Joints", nameBn: "হাড় ও জয়েন্ট", icon: Bone, symptoms: [
+    { en: "Joint Pain", bn: "জয়েন্টে ব্যথা" },
+    { en: "Back Pain", bn: "পিঠে ব্যথা" },
+    { en: "Stiffness", bn: "শক্ত হওয়া" },
+    { en: "Swelling", bn: "ফোলা" }
+  ]},
+  { id: "pediatric", name: "Child Health", nameBn: "শিশু স্বাস্থ্য", icon: Baby, symptoms: [
+    { en: "Growth Issues", bn: "বৃদ্ধি সমস্যা" },
+    { en: "Feeding Problems", bn: "খাওয়ার সমস্যা" },
+    { en: "Rashes", bn: "র‍্যাশ" },
+    { en: "Behavioral", bn: "আচরণগত" }
+  ]},
 ];
 
-const doctorRecommendations: Record<string, { specialty: string; reason: string; doctors: any[] }> = {
-  "Fever,Cough": {
-    specialty: "General Physician",
-    reason: "Your symptoms suggest a possible respiratory infection. A General Physician can diagnose and treat common infections.",
-    doctors: [
-      { id: 1, name: "Dr. Aminul Islam", specialty: "General Physician", hospital: "Labaid Hospital", rating: 4.7, fee: "৳800", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
-      { id: 2, name: "Dr. Nasreen Akter", specialty: "General Physician", hospital: "United Hospital", rating: 4.8, fee: "৳1,000", image: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?w=100&h=100&fit=crop&crop=face" },
-    ]
-  },
-  "Palpitations,Chest Tightness": {
-    specialty: "Cardiologist",
-    reason: "Heart-related symptoms require evaluation by a Cardiologist to assess your cardiovascular health.",
-    doctors: [
-      { id: 1, name: "Dr. Sarah Ahmed", specialty: "Cardiologist", hospital: "Square Hospital", rating: 4.9, fee: "৳1,500", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
-    ]
-  },
-  "Headache,Numbness": {
-    specialty: "Neurologist",
-    reason: "Neurological symptoms should be evaluated by a specialist to rule out any underlying conditions.",
-    doctors: [
-      { id: 1, name: "Dr. Mohammad Rahman", specialty: "Neurologist", hospital: "Square Hospital", rating: 4.8, fee: "৳2,000", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
-    ]
-  },
-  "Joint Pain,Stiffness": {
-    specialty: "Orthopedic Surgeon",
-    reason: "Joint and bone problems require specialized care from an Orthopedic Surgeon.",
-    doctors: [
-      { id: 1, name: "Dr. Kamal Hossain", specialty: "Orthopedic", hospital: "Ibn Sina Hospital", rating: 4.6, fee: "৳1,500", image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face" },
-    ]
-  },
-  "default": {
-    specialty: "General Physician",
-    reason: "Based on your symptoms, we recommend starting with a General Physician who can provide initial assessment and refer you to a specialist if needed.",
-    doctors: [
-      { id: 1, name: "Dr. Aminul Islam", specialty: "General Physician", hospital: "Labaid Hospital", rating: 4.7, fee: "৳800", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
-    ]
-  }
+// Fallback doctors for recommendations
+const fallbackDoctors = [
+  { id: 1, name: "Dr. Aminul Islam", specialty: "General Physician", hospital: "Labaid Hospital", rating: 4.7, fee: "৳800", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  { id: 21, name: "Dr. Shoaib Ahmad", specialty: "General Physician", hospital: "Praava Health", rating: 4.8, fee: "৳800", image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face" },
+];
+
+const specialtyDoctors: Record<string, any[]> = {
+  "General Physician": [
+    { id: 21, name: "Dr. Shoaib Ahmad", hospital: "Praava Health", rating: 4.8, fee: "৳800", image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face" },
+    { id: 22, name: "Dr. Kabir Ahmed Khan", hospital: "Praava Health", rating: 4.7, fee: "৳1,000", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Cardiologist": [
+    { id: 1, name: "Dr. Fazle Rabbi Chowdhury", hospital: "Square Hospital", rating: 4.9, fee: "৳2,500", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 2, name: "Dr. Mir Jamal Uddin", hospital: "United Hospital", rating: 4.8, fee: "৳2,000", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Neurologist": [
+    { id: 4, name: "Dr. Quazi Deen Mohammad", hospital: "National Institute of Neurosciences", rating: 4.9, fee: "৳2,500", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
+    { id: 5, name: "Dr. Mohammad Shah Kamal", hospital: "Square Hospital", rating: 4.8, fee: "৳2,000", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Pediatrician": [
+    { id: 6, name: "Dr. Syeda Afroza", hospital: "Dhaka Shishu Hospital", rating: 4.9, fee: "৳1,500", image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop&crop=face" },
+    { id: 7, name: "Dr. Md. Benzir Ahmed", hospital: "Apollo Hospital", rating: 4.8, fee: "৳1,200", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Dermatologist": [
+    { id: 9, name: "Dr. Rashida Begum", hospital: "Labaid Hospital", rating: 4.8, fee: "৳1,500", image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop&crop=face" },
+    { id: 10, name: "Dr. Md. Shahidullah Sikder", hospital: "Square Hospital", rating: 4.7, fee: "৳1,800", image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Gynecologist": [
+    { id: 11, name: "Dr. Ferdousi Begum", hospital: "Dhaka Medical College", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=100&h=100&fit=crop&crop=face" },
+    { id: 12, name: "Dr. Mariha Alam Chowdhury", hospital: "Praava Health", rating: 4.8, fee: "৳1,500", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Orthopedic": [
+    { id: 14, name: "Dr. Rezaul Karim", hospital: "National Institute of Traumatology", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 15, name: "Dr. Khandaker Abu Taleb", hospital: "Square Hospital", rating: 4.8, fee: "৳2,500", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "ENT Specialist": [
+    { id: 17, name: "Dr. Kamrul Hassan Tarafder", hospital: "BSMMU", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 18, name: "Dr. Belayat Hossain Siddique", hospital: "Square Hospital", rating: 4.8, fee: "৳1,800", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Psychiatrist": [
+    { id: 19, name: "Dr. Mohammad Waziul Alam Chowdhury", hospital: "National Institute of Mental Health", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
+    { id: 20, name: "Dr. Helal Uddin Ahmed", hospital: "United Hospital", rating: 4.8, fee: "৳1,800", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+  ],
 };
+
+interface AIRecommendation {
+  specialty: string;
+  specialty_bn?: string;
+  reason: string;
+  urgency: "low" | "medium" | "high";
+  disclaimer: string;
+}
 
 export default function AIDoctorFinder() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [customSymptoms, setCustomSymptoms] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [recommendation, setRecommendation] = useState<typeof doctorRecommendations["default"] | null>(null);
+  const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
   const [step, setStep] = useState<"select" | "analyzing" | "result">("select");
+  const [inputMode, setInputMode] = useState<"buttons" | "text">("buttons");
 
   const toggleSymptom = (symptom: string) => {
     setSelectedSymptoms(prev => 
@@ -71,26 +131,60 @@ export default function AIDoctorFinder() {
     );
   };
 
-  const analyzeSymptoms = () => {
-    if (selectedSymptoms.length === 0) return;
+  const analyzeSymptoms = async () => {
+    const symptomsText = inputMode === "text" 
+      ? customSymptoms 
+      : selectedSymptoms.join(", ");
+    
+    if (!symptomsText.trim()) {
+      toast.error("Please describe your symptoms / আপনার লক্ষণগুলো বর্ণনা করুন");
+      return;
+    }
     
     setIsAnalyzing(true);
     setStep("analyzing");
 
-    setTimeout(() => {
-      // Find matching recommendation
-      const symptomKey = selectedSymptoms.slice(0, 2).join(",");
-      const rec = doctorRecommendations[symptomKey] || doctorRecommendations["default"];
-      setRecommendation(rec);
-      setIsAnalyzing(false);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-symptoms", {
+        body: { symptoms: symptomsText }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setRecommendation(data);
       setStep("result");
-    }, 2500);
+    } catch (error) {
+      console.error("Error analyzing symptoms:", error);
+      toast.error("Failed to analyze symptoms. Please try again. / লক্ষণ বিশ্লেষণে ব্যর্থ। আবার চেষ্টা করুন।");
+      setStep("select");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const resetFinder = () => {
     setSelectedSymptoms([]);
+    setCustomSymptoms("");
     setRecommendation(null);
     setStep("select");
+  };
+
+  const getDoctorsForSpecialty = (specialty: string) => {
+    return specialtyDoctors[specialty] || fallbackDoctors;
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "high": return "text-destructive bg-destructive/10";
+      case "medium": return "text-accent bg-accent/10";
+      default: return "text-primary bg-primary/10";
+    }
   };
 
   return (
@@ -109,8 +203,12 @@ export default function AIDoctorFinder() {
             <h1 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
               AI Doctor Finder
             </h1>
-            <p className="text-primary-foreground/80">
+            <p className="text-primary-foreground/80 mb-2">
               Describe your symptoms and our AI will recommend the right specialist for you
+            </p>
+            <p className="text-primary-foreground/70 text-sm flex items-center justify-center gap-2">
+              <Languages className="w-4 h-4" />
+              English & বাংলা supported
             </p>
           </motion.div>
         </div>
@@ -128,63 +226,128 @@ export default function AIDoctorFinder() {
                 exit={{ opacity: 0, y: -20 }}
               >
                 <div className="healthcare-card">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Sparkles className="w-6 h-6 text-accent" />
-                    <h2 className="font-display text-xl font-semibold text-foreground">
-                      Select Your Symptoms
-                    </h2>
-                  </div>
-                  <p className="text-muted-foreground mb-8">
-                    Choose the symptoms you're experiencing. Select multiple symptoms for more accurate recommendations.
-                  </p>
-
-                  <div className="space-y-6">
-                    {symptomCategories.map((category) => (
-                      <div key={category.id}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <category.icon className="w-5 h-5 text-primary" />
-                          <h3 className="font-medium text-foreground">{category.name}</h3>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {category.symptoms.map((symptom) => (
-                            <button
-                              key={symptom}
-                              onClick={() => toggleSymptom(symptom)}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                selectedSymptoms.includes(symptom)
-                                  ? "bg-primary text-primary-foreground shadow-md"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-                              }`}
-                            >
-                              {symptom}
-                              {selectedSymptoms.includes(symptom) && (
-                                <CheckCircle2 className="w-4 h-4 ml-1 inline" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedSymptoms.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-8 pt-6 border-t border-border"
+                  {/* Input Mode Toggle */}
+                  <div className="flex items-center gap-2 mb-6 p-1 bg-muted rounded-lg w-fit">
+                    <button
+                      onClick={() => setInputMode("buttons")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        inputMode === "buttons"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Selected symptoms:</p>
-                          <p className="font-medium text-foreground">{selectedSymptoms.join(", ")}</p>
-                        </div>
-                        <Button variant="healthcare" size="lg" onClick={analyzeSymptoms}>
-                          <Brain className="w-5 h-5 mr-2" />
-                          Find Doctor
+                      Select Symptoms
+                    </button>
+                    <button
+                      onClick={() => setInputMode("text")}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        inputMode === "text"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Type in English/বাংলা
+                    </button>
+                  </div>
+
+                  {inputMode === "buttons" ? (
+                    <>
+                      <div className="flex items-center gap-3 mb-6">
+                        <Sparkles className="w-6 h-6 text-accent" />
+                        <h2 className="font-display text-xl font-semibold text-foreground">
+                          Select Your Symptoms / আপনার লক্ষণ নির্বাচন করুন
+                        </h2>
+                      </div>
+                      <p className="text-muted-foreground mb-8">
+                        Choose the symptoms you're experiencing. Select multiple symptoms for more accurate recommendations.
+                      </p>
+
+                      <div className="space-y-6">
+                        {symptomCategories.map((category) => (
+                          <div key={category.id}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <category.icon className="w-5 h-5 text-primary" />
+                              <h3 className="font-medium text-foreground">
+                                {category.name} <span className="text-muted-foreground text-sm">({category.nameBn})</span>
+                              </h3>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {category.symptoms.map((symptom) => (
+                                <button
+                                  key={symptom.en}
+                                  onClick={() => toggleSymptom(symptom.en)}
+                                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                                    selectedSymptoms.includes(symptom.en)
+                                      ? "bg-primary text-primary-foreground shadow-md"
+                                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                  }`}
+                                >
+                                  {symptom.en} ({symptom.bn})
+                                  {selectedSymptoms.includes(symptom.en) && (
+                                    <CheckCircle2 className="w-4 h-4 ml-1 inline" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {selectedSymptoms.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-8 pt-6 border-t border-border"
+                        >
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Selected symptoms:</p>
+                              <p className="font-medium text-foreground">{selectedSymptoms.join(", ")}</p>
+                            </div>
+                            <Button variant="healthcare" size="lg" onClick={analyzeSymptoms} disabled={isAnalyzing}>
+                              <Brain className="w-5 h-5 mr-2" />
+                              Find Doctor
+                              <ArrowRight className="w-5 h-5 ml-2" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3 mb-6">
+                        <Languages className="w-6 h-6 text-accent" />
+                        <h2 className="font-display text-xl font-semibold text-foreground">
+                          Describe Your Symptoms / আপনার লক্ষণ বর্ণনা করুন
+                        </h2>
+                      </div>
+                      <p className="text-muted-foreground mb-4">
+                        Type your symptoms in English or Bangla. Our AI understands both languages.
+                      </p>
+                      <p className="text-muted-foreground mb-6 text-sm">
+                        ইংরেজি বা বাংলায় আপনার লক্ষণ লিখুন। আমাদের AI উভয় ভাষা বোঝে।
+                      </p>
+
+                      <Textarea
+                        value={customSymptoms}
+                        onChange={(e) => setCustomSymptoms(e.target.value)}
+                        placeholder="Example: I have fever and headache for 3 days...&#10;উদাহরণ: আমার ৩ দিন ধরে জ্বর ও মাথা ব্যথা..."
+                        className="min-h-[150px] text-base"
+                      />
+
+                      <div className="mt-6 flex justify-end">
+                        <Button 
+                          variant="healthcare" 
+                          size="lg" 
+                          onClick={analyzeSymptoms} 
+                          disabled={isAnalyzing || !customSymptoms.trim()}
+                        >
+                          <Send className="w-5 h-5 mr-2" />
+                          Analyze / বিশ্লেষণ করুন
                           <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                       </div>
-                    </motion.div>
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -203,10 +366,13 @@ export default function AIDoctorFinder() {
                   <div className="absolute inset-0 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
                 </div>
                 <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-                  Analyzing Your Symptoms
+                  Analyzing Your Symptoms / লক্ষণ বিশ্লেষণ করা হচ্ছে
                 </h2>
                 <p className="text-muted-foreground">
                   Our AI is finding the best specialist for you...
+                </p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  আমাদের AI আপনার জন্য সেরা বিশেষজ্ঞ খুঁজছে...
                 </p>
               </motion.div>
             )}
@@ -225,12 +391,25 @@ export default function AIDoctorFinder() {
                     <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Stethoscope className="w-7 h-7 text-primary" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h2 className="font-display text-xl font-semibold text-foreground mb-1">
-                        Recommended Specialist
+                        Recommended Specialist / প্রস্তাবিত বিশেষজ্ঞ
                       </h2>
-                      <p className="text-2xl font-bold text-primary">{recommendation.specialty}</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {recommendation.specialty}
+                        {recommendation.specialty_bn && (
+                          <span className="text-lg font-normal text-muted-foreground ml-2">
+                            ({recommendation.specialty_bn})
+                          </span>
+                        )}
+                      </p>
                     </div>
+                    {recommendation.urgency && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getUrgencyColor(recommendation.urgency)}`}>
+                        {recommendation.urgency === "high" ? "জরুরি / Urgent" : 
+                         recommendation.urgency === "medium" ? "মাঝারি / Moderate" : "সাধারণ / Normal"}
+                      </span>
+                    )}
                   </div>
 
                   <div className="p-4 rounded-xl bg-muted mb-6">
@@ -241,21 +420,25 @@ export default function AIDoctorFinder() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="text-sm text-muted-foreground">Based on:</span>
-                    {selectedSymptoms.map(symptom => (
-                      <span key={symptom} className="healthcare-badge text-xs">{symptom}</span>
-                    ))}
+                    <span className="text-sm text-muted-foreground">Based on / ভিত্তিতে:</span>
+                    {inputMode === "text" ? (
+                      <span className="healthcare-badge text-xs">{customSymptoms.slice(0, 50)}...</span>
+                    ) : (
+                      selectedSymptoms.map(symptom => (
+                        <span key={symptom} className="healthcare-badge text-xs">{symptom}</span>
+                      ))
+                    )}
                   </div>
                 </div>
 
                 {/* Recommended Doctors */}
                 <div className="healthcare-card">
                   <h3 className="font-display text-lg font-semibold text-foreground mb-4">
-                    Available {recommendation.specialty}s
+                    Available {recommendation.specialty}s / উপলব্ধ বিশেষজ্ঞরা
                   </h3>
 
                   <div className="space-y-4">
-                    {recommendation.doctors.map((doctor) => (
+                    {getDoctorsForSpecialty(recommendation.specialty).map((doctor) => (
                       <Link
                         key={doctor.id}
                         to={`/doctors/${doctor.id}`}
@@ -268,7 +451,7 @@ export default function AIDoctorFinder() {
                         />
                         <div className="flex-1">
                           <h4 className="font-semibold text-foreground">{doctor.name}</h4>
-                          <p className="text-sm text-primary">{doctor.specialty}</p>
+                          <p className="text-sm text-primary">{recommendation.specialty}</p>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <MapPin className="w-3 h-3" />
                             {doctor.hospital}
@@ -288,10 +471,10 @@ export default function AIDoctorFinder() {
 
                   <div className="flex gap-3 mt-6">
                     <Button variant="healthcare-outline" onClick={resetFinder} className="flex-1">
-                      Try Different Symptoms
+                      Try Different Symptoms / আবার চেষ্টা করুন
                     </Button>
                     <Button variant="healthcare" asChild className="flex-1">
-                      <Link to="/doctors">View All Doctors</Link>
+                      <Link to="/doctors">View All Doctors / সব ডাক্তার</Link>
                     </Button>
                   </div>
                 </div>
@@ -299,8 +482,7 @@ export default function AIDoctorFinder() {
                 {/* Disclaimer */}
                 <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Disclaimer:</strong> This AI-powered recommendation is for informational purposes only 
-                    and does not constitute medical advice. Please consult with a healthcare professional for proper diagnosis and treatment.
+                    <strong className="text-foreground">Disclaimer / দাবিত্যাগ:</strong> {recommendation.disclaimer || "This AI-powered recommendation is for informational purposes only and does not constitute medical advice. Please consult with a healthcare professional for proper diagnosis and treatment. এই AI-চালিত সুপারিশ শুধুমাত্র তথ্যের জন্য এবং চিকিৎসা পরামর্শ নয়।"}
                   </p>
                 </div>
               </motion.div>
