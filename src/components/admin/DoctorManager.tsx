@@ -72,6 +72,28 @@ export default function DoctorManager() {
   const approvedCount = doctors.filter(d => d.verification_status === "approved").length;
   const rejectedCount = doctors.filter(d => d.verification_status === "rejected").length;
 
+  const sendVerificationEmail = async (doctor: Doctor, status: "approved" | "rejected", reason?: string) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-verification-email", {
+        body: {
+          doctorName: doctor.full_name,
+          doctorEmail: doctor.email,
+          status,
+          rejectionReason: reason,
+        },
+      });
+
+      if (error) {
+        console.error("Failed to send email:", error);
+        toast.error("Status updated but email notification failed");
+      } else {
+        toast.success(`Email notification sent to ${doctor.email}`);
+      }
+    } catch (err) {
+      console.error("Email sending error:", err);
+    }
+  };
+
   const handleApprove = async (doctor: Doctor) => {
     setProcessingId(doctor.id);
     const { error } = await supabase
@@ -87,6 +109,7 @@ export default function DoctorManager() {
       console.error(error);
     } else {
       toast.success(`${doctor.full_name} has been approved`);
+      await sendVerificationEmail(doctor, "approved");
       fetchDoctors();
     }
     setProcessingId(null);
@@ -112,6 +135,7 @@ export default function DoctorManager() {
       console.error(error);
     } else {
       toast.success(`${selectedDoctor.full_name} has been rejected`);
+      await sendVerificationEmail(selectedDoctor, "rejected", rejectionReason);
       fetchDoctors();
     }
     setShowRejectDialog(false);
