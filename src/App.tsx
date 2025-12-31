@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Doctors from "./pages/Doctors";
 import DoctorProfile from "./pages/DoctorProfile";
@@ -41,9 +42,10 @@ const App = () => (
             <Route path="/articles" element={<Articles />} />
             <Route path="/articles/:id" element={<ArticleDetail />} />
             <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
-            <Route path="/patient" element={<PatientDashboard />} />
-            <Route path="/doctor" element={<DoctorDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            {/* Protected Dashboard Routes */}
+            <Route path="/patient" element={<ProtectedRoute><PatientDashboard /></ProtectedRoute>} />
+            <Route path="/doctor" element={<ProtectedRoute><DoctorDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           </Route>
           {/* Auth routes - outside MainLayout */}
           <Route path="/signup" element={<SignupSelection />} />
