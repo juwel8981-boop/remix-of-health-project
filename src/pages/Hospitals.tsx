@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Phone, Globe, Star, Clock, Navigation, Building2, Stethoscope, Pill } from "lucide-react";
+import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const locations = [
+  { value: "all", label: "All Locations" },
+  { value: "dhaka", label: "Dhaka" },
+  { value: "chattogram", label: "Chattogram" },
+  { value: "rajshahi", label: "Rajshahi" },
+  { value: "khulna", label: "Khulna" },
+  { value: "sylhet", label: "Sylhet" },
+  { value: "barisal", label: "Barisal" },
+  { value: "rangpur", label: "Rangpur" },
+  { value: "mymensingh", label: "Mymensingh" },
+];
 
 const hospitals = [
   {
     id: 1,
     name: "Dhaka Medical College Hospital",
     type: "Government",
+    location: "dhaka",
     address: "Secretariat Road, Dhaka 1000",
     phone: "+880 2-55165001",
     rating: 4.5,
@@ -21,6 +34,7 @@ const hospitals = [
     id: 2,
     name: "Square Hospital",
     type: "Private",
+    location: "dhaka",
     address: "18/F, Bir Uttam Qazi Nuruzzaman Sarak, Dhaka",
     phone: "+880 2-8144400",
     rating: 4.8,
@@ -32,8 +46,37 @@ const hospitals = [
   },
   {
     id: 3,
+    name: "Chattogram Medical College Hospital",
+    type: "Government",
+    location: "chattogram",
+    address: "K.B. Fazlul Kader Road, Chattogram",
+    phone: "+880 31-630335",
+    rating: 4.4,
+    reviews: 298,
+    distance: "3.2 km",
+    emergency: true,
+    specialties: ["General Surgery", "Medicine", "Pediatrics"],
+    image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&h=400&fit=crop",
+  },
+  {
+    id: 4,
+    name: "Rajshahi Medical College Hospital",
+    type: "Government",
+    location: "rajshahi",
+    address: "Medical College Road, Rajshahi",
+    phone: "+880 721-772150",
+    rating: 4.3,
+    reviews: 186,
+    distance: "1.8 km",
+    emergency: true,
+    specialties: ["Cardiology", "Orthopedics", "Gynecology"],
+    image: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop",
+  },
+  {
+    id: 5,
     name: "Apollo Hospital Dhaka",
     type: "Private",
+    location: "dhaka",
     address: "Plot 81, Block E, Bashundhara, Dhaka",
     phone: "+880 2-8401661",
     rating: 4.7,
@@ -41,20 +84,21 @@ const hospitals = [
     distance: "6.8 km",
     emergency: true,
     specialties: ["Transplant Surgery", "Oncology", "Neurosurgery"],
-    image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&h=400&fit=crop",
+    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop",
   },
   {
-    id: 4,
-    name: "United Hospital",
-    type: "Private",
-    address: "Plot 15, Road 71, Gulshan, Dhaka",
-    phone: "+880 2-8836444",
-    rating: 4.6,
-    reviews: 356,
-    distance: "5.1 km",
+    id: 6,
+    name: "Sylhet MAG Osmani Medical College",
+    type: "Government",
+    location: "sylhet",
+    address: "Medical Road, Sylhet 3100",
+    phone: "+880 821-713667",
+    rating: 4.2,
+    reviews: 145,
+    distance: "2.1 km",
     emergency: true,
-    specialties: ["Cardiology", "Gynecology", "Pediatrics"],
-    image: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop",
+    specialties: ["Medicine", "Surgery", "ENT"],
+    image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
   },
 ];
 
@@ -62,6 +106,7 @@ const diagnostics = [
   {
     id: 1,
     name: "Popular Diagnostic Centre",
+    location: "dhaka",
     address: "House 16, Road 2, Dhanmondi, Dhaka",
     phone: "+880 2-9116491",
     rating: 4.6,
@@ -73,6 +118,7 @@ const diagnostics = [
   {
     id: 2,
     name: "Ibn Sina Diagnostic",
+    location: "dhaka",
     address: "House 48, Road 9/A, Dhanmondi, Dhaka",
     phone: "+880 2-9144269",
     rating: 4.5,
@@ -83,32 +129,63 @@ const diagnostics = [
   },
   {
     id: 3,
-    name: "Labaid Diagnostics",
-    address: "House 1, Road 4, Dhanmondi, Dhaka",
-    phone: "+880 2-9676767",
+    name: "Labaid Diagnostics Chattogram",
+    location: "chattogram",
+    address: "CDA Avenue, Chattogram",
+    phone: "+880 31-654321",
     rating: 4.7,
-    reviews: 412,
-    distance: "3.1 km",
+    reviews: 312,
+    distance: "2.5 km",
     services: ["All Lab Tests", "Imaging", "Health Packages"],
     image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=600&h=400&fit=crop",
+  },
+  {
+    id: 4,
+    name: "Medinova Diagnostic Rajshahi",
+    location: "rajshahi",
+    address: "Shaheb Bazar, Rajshahi",
+    phone: "+880 721-812345",
+    rating: 4.4,
+    reviews: 156,
+    distance: "1.5 km",
+    services: ["Blood Tests", "ECG", "X-Ray", "Ultrasound"],
+    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
+  },
+  {
+    id: 5,
+    name: "Sylhet Diagnostic Centre",
+    location: "sylhet",
+    address: "Zindabazar, Sylhet",
+    phone: "+880 821-723456",
+    rating: 4.3,
+    reviews: 98,
+    distance: "1.2 km",
+    services: ["Pathology", "Radiology", "Health Checkup"],
+    image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop",
   },
 ];
 
 export default function Hospitals() {
   const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">("hospitals");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const filteredHospitals = hospitals.filter(
-    (h) =>
-      h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      h.address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredHospitals = hospitals.filter((h) => {
+    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      h.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLocation = selectedLocation === "all" || h.location === selectedLocation;
+    return matchesSearch && matchesLocation;
+  });
 
-  const filteredDiagnostics = diagnostics.filter(
-    (d) =>
-      d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDiagnostics = diagnostics.filter((d) => {
+    const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLocation = selectedLocation === "all" || d.location === selectedLocation;
+    return matchesSearch && matchesLocation;
+  });
+
+  const selectedLocationLabel = locations.find(l => l.value === selectedLocation)?.label || "All Locations";
 
   return (
     <div className="min-h-screen bg-background">
@@ -146,17 +223,46 @@ export default function Hospitals() {
                   className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                 />
               </div>
-              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted sm:w-48">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Your location"
-                  className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-                />
+              <div className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-muted sm:w-52 w-full"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-foreground">{selectedLocationLabel}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-healthcare-lg z-50 overflow-hidden">
+                    <ul className="py-2 max-h-64 overflow-y-auto">
+                      {locations.map((location) => (
+                        <li key={location.value}>
+                          <button
+                            onClick={() => {
+                              setSelectedLocation(location.value);
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 hover:bg-muted transition-colors ${
+                              selectedLocation === location.value 
+                                ? "bg-primary/10 text-primary font-medium" 
+                                : "text-foreground"
+                            }`}
+                          >
+                            {location.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               <Button variant="accent" size="lg">
                 <Navigation className="w-5 h-5" />
-                <span className="hidden sm:inline ml-2">Near Me</span>
+                <span className="hidden sm:inline ml-2">Search</span>
               </Button>
             </div>
           </motion.div>
