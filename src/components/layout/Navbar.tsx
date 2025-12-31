@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut } from "lucide-react";
+import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -149,6 +149,14 @@ export function Navbar() {
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
                       </div>
+                      <Link
+                        to="/settings"
+                        onClick={() => setShowUserMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Profile Settings
+                      </Link>
                       <button
                         onClick={handleLogout}
                         className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
@@ -230,6 +238,12 @@ export function Navbar() {
                       <div className="px-4 py-3 bg-muted/50 rounded-lg">
                         <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
                       </div>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to="/settings" onClick={() => setIsOpen(false)}>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Profile Settings
+                        </Link>
+                      </Button>
                       <Button 
                         variant="outline" 
                         className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" 
