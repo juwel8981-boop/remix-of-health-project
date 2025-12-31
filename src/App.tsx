@@ -42,10 +42,10 @@ const App = () => (
             <Route path="/articles" element={<Articles />} />
             <Route path="/articles/:id" element={<ArticleDetail />} />
             <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
-            {/* Protected Dashboard Routes */}
-            <Route path="/patient" element={<ProtectedRoute><PatientDashboard /></ProtectedRoute>} />
-            <Route path="/doctor" element={<ProtectedRoute><DoctorDashboard /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            {/* Protected Dashboard Routes with Role-Based Access */}
+            <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
+            <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
           </Route>
           {/* Auth routes - outside MainLayout */}
           <Route path="/signup" element={<SignupSelection />} />
