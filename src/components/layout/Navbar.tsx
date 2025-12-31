@@ -98,7 +98,7 @@ export function Navbar() {
               <Link to="/login">Log In</Link>
             </Button>
             <Button variant="accent" asChild>
-              <Link to="/register">Get Started</Link>
+              <Link to="/signup">Get Started</Link>
             </Button>
           </div>
 
@@ -159,7 +159,7 @@ export function Navbar() {
                     <Link to="/login">Log In</Link>
                   </Button>
                   <Button variant="accent" className="w-full" asChild>
-                    <Link to="/register">Get Started</Link>
+                    <Link to="/signup">Get Started</Link>
                   </Button>
                 </div>
               </div>

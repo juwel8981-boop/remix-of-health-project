@@ -50,6 +50,57 @@ export type Database = {
         }
         Relationships: []
       }
+      doctors: {
+        Row: {
+          created_at: string
+          documents_url: string | null
+          email: string
+          experience_years: number | null
+          full_name: string
+          hospital_affiliation: string | null
+          id: string
+          phone: string | null
+          registration_number: string
+          rejection_reason: string | null
+          specialization: string
+          updated_at: string
+          user_id: string
+          verification_status: string
+        }
+        Insert: {
+          created_at?: string
+          documents_url?: string | null
+          email: string
+          experience_years?: number | null
+          full_name: string
+          hospital_affiliation?: string | null
+          id?: string
+          phone?: string | null
+          registration_number: string
+          rejection_reason?: string | null
+          specialization: string
+          updated_at?: string
+          user_id: string
+          verification_status?: string
+        }
+        Update: {
+          created_at?: string
+          documents_url?: string | null
+          email?: string
+          experience_years?: number | null
+          full_name?: string
+          hospital_affiliation?: string | null
+          id?: string
+          phone?: string | null
+          registration_number?: string
+          rejection_reason?: string | null
+          specialization?: string
+          updated_at?: string
+          user_id?: string
+          verification_status?: string
+        }
+        Relationships: []
+      }
       health_posts: {
         Row: {
           author_avatar: string | null
@@ -93,6 +144,51 @@ export type Database = {
           likes_count?: number | null
           rejection_reason?: string | null
           status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          address: string | null
+          blood_group: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string
+          emergency_contact: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email: string
+          emergency_contact?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string
+          emergency_contact?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -15,7 +15,11 @@ import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AIDoctorFinder from "./pages/AIDoctorFinder";
-import Auth from "./pages/Auth";
+import SignupSelection from "./pages/SignupSelection";
+import PatientSignup from "./pages/PatientSignup";
+import DoctorSignup from "./pages/DoctorSignup";
+import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,7 +45,14 @@ const App = () => (
             <Route path="/doctor" element={<DoctorDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
           </Route>
-          <Route path="/auth" element={<Auth />} />
+          {/* Auth routes - outside MainLayout */}
+          <Route path="/signup" element={<SignupSelection />} />
+          <Route path="/signup/patient" element={<PatientSignup />} />
+          <Route path="/signup/doctor" element={<DoctorSignup />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          {/* Legacy auth route redirect */}
+          <Route path="/auth" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
