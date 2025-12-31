@@ -11,6 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+interface ServiceWithPrice {
+  name: string;
+  price: string;
+}
+
 interface Diagnostic {
   id: number;
   name: string;
@@ -18,7 +23,7 @@ interface Diagnostic {
   address: string;
   phone: string;
   rating: number;
-  services: string[];
+  services: ServiceWithPrice[];
   status: "approved" | "pending" | "rejected";
   image: string;
   openHours: string;
@@ -39,7 +44,13 @@ const initialDiagnostics: Diagnostic[] = [
     address: "House 16, Road 2, Dhanmondi, Dhaka 1205",
     phone: "+880 2-9666778",
     rating: 4.7,
-    services: ["X-Ray", "MRI", "CT Scan", "Blood Test", "Ultrasound"],
+    services: [
+      { name: "X-Ray", price: "৳500" },
+      { name: "MRI", price: "৳8,000" },
+      { name: "CT Scan", price: "৳6,000" },
+      { name: "Blood Test", price: "৳300" },
+      { name: "Ultrasound", price: "৳1,500" },
+    ],
     status: "approved",
     image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
     openHours: "7:00 AM - 10:00 PM",
@@ -51,7 +62,13 @@ const initialDiagnostics: Diagnostic[] = [
     address: "House 48, Road 9/A, Dhanmondi, Dhaka 1209",
     phone: "+880 2-9128853",
     rating: 4.6,
-    services: ["X-Ray", "Ultrasound", "ECG", "Blood Test", "Pathology"],
+    services: [
+      { name: "X-Ray", price: "৳450" },
+      { name: "Ultrasound", price: "৳1,200" },
+      { name: "ECG", price: "৳800" },
+      { name: "Blood Test", price: "৳250" },
+      { name: "Pathology", price: "৳400" },
+    ],
     status: "approved",
     image: "https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=800",
     openHours: "6:00 AM - 11:00 PM",
@@ -63,7 +80,11 @@ const initialDiagnostics: Diagnostic[] = [
     address: "Station Road, Chittagong",
     phone: "+880 31-654321",
     rating: 4.4,
-    services: ["Blood Test", "X-Ray", "ECG"],
+    services: [
+      { name: "Blood Test", price: "৳200" },
+      { name: "X-Ray", price: "৳400" },
+      { name: "ECG", price: "৳700" },
+    ],
     status: "pending",
     image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=800",
     openHours: "8:00 AM - 9:00 PM",
@@ -88,10 +109,6 @@ export default function DiagnosticManager() {
     return matchesSearch && matchesLocation && matchesStatus;
   });
 
-  const handleEditDiagnostic = (diagnostic: Diagnostic) => {
-    setEditingDiagnostic(diagnostic);
-    setDiagnosticForm({ ...diagnostic });
-  };
 
   const handleAddDiagnostic = () => {
     setIsAddingDiagnostic(true);
@@ -106,12 +123,31 @@ export default function DiagnosticManager() {
       image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
       openHours: "",
     });
+    setServiceInputs([{ name: "", price: "" }]);
+  };
+
+  const [serviceInputs, setServiceInputs] = useState<{ name: string; price: string }[]>([{ name: "", price: "" }]);
+
+  const addServiceInput = () => {
+    setServiceInputs([...serviceInputs, { name: "", price: "" }]);
+  };
+
+  const updateServiceInput = (index: number, field: "name" | "price", value: string) => {
+    const updated = [...serviceInputs];
+    updated[index][field] = value;
+    setServiceInputs(updated);
+  };
+
+  const removeServiceInput = (index: number) => {
+    setServiceInputs(serviceInputs.filter((_, i) => i !== index));
   };
 
   const handleSaveDiagnostic = () => {
+    const validServices = serviceInputs.filter(s => s.name.trim() !== "");
+    
     if (editingDiagnostic) {
       setDiagnostics((prev) =>
-        prev.map((d) => (d.id === editingDiagnostic.id ? { ...d, ...diagnosticForm } as Diagnostic : d))
+        prev.map((d) => (d.id === editingDiagnostic.id ? { ...d, ...diagnosticForm, services: validServices } as Diagnostic : d))
       );
       setEditingDiagnostic(null);
     } else if (isAddingDiagnostic) {
@@ -122,7 +158,7 @@ export default function DiagnosticManager() {
         address: diagnosticForm.address || "",
         phone: diagnosticForm.phone || "",
         rating: diagnosticForm.rating || 0,
-        services: diagnosticForm.services || [],
+        services: validServices,
         status: diagnosticForm.status || "pending",
         image: diagnosticForm.image || "",
         openHours: diagnosticForm.openHours || "",
@@ -131,6 +167,13 @@ export default function DiagnosticManager() {
       setIsAddingDiagnostic(false);
     }
     setDiagnosticForm({});
+    setServiceInputs([{ name: "", price: "" }]);
+  };
+
+  const handleEditDiagnostic = (diagnostic: Diagnostic) => {
+    setEditingDiagnostic(diagnostic);
+    setDiagnosticForm({ ...diagnostic });
+    setServiceInputs(diagnostic.services.length > 0 ? diagnostic.services : [{ name: "", price: "" }]);
   };
 
   const handleDeleteDiagnostic = (id: number) => {
@@ -143,14 +186,7 @@ export default function DiagnosticManager() {
     );
   };
 
-  const toggleService = (service: string) => {
-    setDiagnosticForm((prev) => ({
-      ...prev,
-      services: prev.services?.includes(service)
-        ? prev.services.filter((s) => s !== service)
-        : [...(prev.services || []), service],
-    }));
-  };
+  // Remove old toggleService function - no longer needed
 
   return (
     <div className="space-y-6">
@@ -249,16 +285,18 @@ export default function DiagnosticManager() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1 mb-4">
+              <div className="space-y-1 mb-4">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Services & Prices:</p>
                 {diagnostic.services.slice(0, 3).map((s) => (
-                  <span key={s} className="px-2 py-0.5 bg-secondary/10 text-secondary text-xs rounded-full">
-                    {s}
-                  </span>
+                  <div key={s.name} className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">{s.name}</span>
+                    <span className="font-medium text-foreground">{s.price || "N/A"}</span>
+                  </div>
                 ))}
                 {diagnostic.services.length > 3 && (
-                  <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
-                    +{diagnostic.services.length - 3} more
-                  </span>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    +{diagnostic.services.length - 3} more services
+                  </p>
                 )}
               </div>
 
@@ -396,18 +434,40 @@ export default function DiagnosticManager() {
             </div>
 
             <div>
-              <Label>Services Offered</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {allServices.map((service) => (
-                  <Button
-                    key={service}
-                    type="button"
-                    variant={diagnosticForm.services?.includes(service) ? "healthcare" : "outline"}
-                    size="sm"
-                    onClick={() => toggleService(service)}
-                  >
-                    {service}
-                  </Button>
+              <Label className="flex items-center justify-between mb-2">
+                <span>Services & Prices</span>
+                <Button type="button" variant="outline" size="sm" onClick={addServiceInput}>
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Service
+                </Button>
+              </Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {serviceInputs.map((service, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Service name (e.g., X-Ray)"
+                      value={service.name}
+                      onChange={(e) => updateServiceInput(index, "name", e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      placeholder="Price (e.g., ৳500)"
+                      value={service.price}
+                      onChange={(e) => updateServiceInput(index, "price", e.target.value)}
+                      className="w-32"
+                    />
+                    {serviceInputs.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => removeServiceInput(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
