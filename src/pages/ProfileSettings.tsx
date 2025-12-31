@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { User, Lock, Shield, Loader2, Save, ArrowLeft } from "lucide-react";
+import { User, Lock, Shield, Loader2, Save, ArrowLeft, Camera } from "lucide-react";
 import { z } from "zod";
 
 const passwordSchema = z.string()
@@ -43,10 +44,14 @@ type UserType = "patient" | "doctor" | null;
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [userType, setUserType] = useState<UserType>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
   
@@ -66,6 +71,19 @@ export default function ProfileSettings() {
     if (!user) {
       navigate("/login");
       return;
+    }
+
+    setUserId(user.id);
+
+    // Get avatar URL from profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    
+    if (profile?.avatar_url) {
+      setAvatarUrl(profile.avatar_url);
     }
 
     // Check if user is a patient
@@ -97,6 +115,64 @@ export default function ProfileSettings() {
     }
 
     setLoading(false);
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !userId) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be less than 2MB");
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      // Create unique file path
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${userId}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Update profiles table
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", userId);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl + "?t=" + Date.now()); // Add timestamp to bust cache
+      toast.success("Profile photo updated successfully");
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      toast.error("Failed to upload profile photo");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const getInitials = () => {
+    const name = patientProfile?.full_name || doctorProfile?.full_name || "";
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   const handleSavePatientProfile = async () => {
@@ -272,6 +348,42 @@ export default function ProfileSettings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Avatar Upload Section */}
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      <Avatar className="h-24 w-24">
+                        <AvatarImage src={avatarUrl || undefined} alt="Profile photo" />
+                        <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                          {getInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                        className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {uploadingAvatar ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-foreground">Profile Photo</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Click the camera icon to upload a new photo. Max 2MB.
+                      </p>
+                    </div>
+                  </div>
+
                   {userType === "patient" && patientProfile && (
                     <>
                       <div className="grid md:grid-cols-2 gap-4">
