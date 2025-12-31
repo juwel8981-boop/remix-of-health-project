@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, Plus, Search, Edit, Trash2, Eye, TrendingUp,
-  CheckCircle2, XCircle, Clock, MapPin
+  Settings, MapPin, LogOut, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DoctorManager from "@/components/admin/DoctorManager";
 import HospitalManager from "@/components/admin/HospitalManager";
 import DiagnosticManager from "@/components/admin/DiagnosticManager";
 import DoctorChamberManager from "@/components/admin/DoctorChamberManager";
+import ContentManager from "@/components/admin/ContentManager";
+import SettingsManager from "@/components/admin/SettingsManager";
+import ActivityFeed from "@/components/admin/ActivityFeed";
+import { useToast } from "@/hooks/use-toast";
+import { User } from "@supabase/supabase-js";
 
 const sidebarLinks = [
   { name: "Dashboard", icon: LayoutDashboard, tab: "overview" },
@@ -31,7 +35,57 @@ const stats = [
 ];
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been signed out successfully.",
+    });
+    navigate("/auth");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">Please sign in to access the admin dashboard</h2>
+          <Button variant="healthcare" onClick={() => navigate("/auth")}>
+            Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted">
@@ -45,7 +99,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="font-semibold text-background">Admin Panel</p>
-                <p className="text-sm text-background/70">System Manager</p>
+                <p className="text-sm text-background/70 truncate max-w-[140px]">{user.email}</p>
               </div>
             </div>
           </div>
@@ -69,6 +123,17 @@ export default function AdminDashboard() {
               ))}
             </ul>
           </nav>
+
+          <div className="p-4 border-t border-background/10">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-background/70 hover:text-background hover:bg-background/10"
+              onClick={handleSignOut}
+            >
+              <LogOut className="w-5 h-5 mr-3" />
+              Sign Out
+            </Button>
+          </div>
         </aside>
 
         {/* Main Content */}
@@ -101,7 +166,7 @@ export default function AdminDashboard() {
                   Admin Dashboard
                 </h1>
                 <p className="text-muted-foreground">
-                  Manage hospitals, doctors, and platform content.
+                  Welcome back! Manage hospitals, doctors, and platform content.
                 </p>
               </div>
 
@@ -129,24 +194,33 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Button variant="healthcare" className="h-auto py-6 flex-col" onClick={() => setActiveTab("doctors")}>
-                  <Stethoscope className="w-8 h-8 mb-2" />
-                  <span>Manage Doctors</span>
-                </Button>
-                <Button variant="healthcare-outline" className="h-auto py-6 flex-col" onClick={() => setActiveTab("chambers")}>
-                  <MapPin className="w-8 h-8 mb-2" />
-                  <span>Manage Chambers</span>
-                </Button>
-                <Button variant="healthcare-outline" className="h-auto py-6 flex-col" onClick={() => setActiveTab("hospitals")}>
-                  <Building2 className="w-8 h-8 mb-2" />
-                  <span>Manage Hospitals</span>
-                </Button>
-                <Button variant="healthcare-outline" className="h-auto py-6 flex-col" onClick={() => setActiveTab("diagnostics")}>
-                  <Users className="w-8 h-8 mb-2" />
-                  <span>Manage Diagnostics</span>
-                </Button>
+              {/* Activity Feed & Quick Actions */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Activity Feed */}
+                <ActivityFeed />
+
+                {/* Quick Actions */}
+                <div className="healthcare-card">
+                  <h3 className="font-display font-semibold text-foreground mb-4">Quick Actions</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="healthcare" className="h-auto py-4 flex-col" onClick={() => setActiveTab("doctors")}>
+                      <Stethoscope className="w-6 h-6 mb-2" />
+                      <span className="text-sm">Manage Doctors</span>
+                    </Button>
+                    <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("chambers")}>
+                      <MapPin className="w-6 h-6 mb-2" />
+                      <span className="text-sm">Manage Chambers</span>
+                    </Button>
+                    <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("hospitals")}>
+                      <Building2 className="w-6 h-6 mb-2" />
+                      <span className="text-sm">Manage Hospitals</span>
+                    </Button>
+                    <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("content")}>
+                      <FileText className="w-6 h-6 mb-2" />
+                      <span className="text-sm">Moderate Content</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -164,20 +238,10 @@ export default function AdminDashboard() {
           {activeTab === "diagnostics" && <DiagnosticManager />}
 
           {/* Content Tab */}
-          {activeTab === "content" && (
-            <div className="text-center py-12">
-              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Content management coming soon.</p>
-            </div>
-          )}
+          {activeTab === "content" && <ContentManager />}
 
           {/* Settings Tab */}
-          {activeTab === "settings" && (
-            <div className="text-center py-12">
-              <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Settings coming soon.</p>
-            </div>
-          )}
+          {activeTab === "settings" && <SettingsManager />}
         </main>
       </div>
     </div>
