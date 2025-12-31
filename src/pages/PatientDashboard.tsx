@@ -2,11 +2,11 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Download, Plus, ChevronRight, Shield
+  Heart, TrendingUp, Download, Plus, ChevronRight, Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-
+import { MedicalRecordsUpload } from "@/components/MedicalRecordsUpload";
 const sidebarLinks = [
   { name: "Overview", icon: Activity, href: "/patient" },
   { name: "My Profile", icon: User, href: "/patient/profile" },
@@ -76,6 +76,7 @@ const healthStats = [
 
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-muted">
@@ -272,7 +273,7 @@ export default function PatientDashboard() {
                 Recent Medical Records
               </h2>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setShowUploadModal(true)}>
                   <Upload className="w-4 h-4 mr-2" />
                   Upload
                 </Button>
@@ -332,7 +333,7 @@ export default function PatientDashboard() {
           >
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 flex items-center justify-center">
-                <Shield className="w-8 h-8 text-primary-foreground" />
+                <Brain className="w-8 h-8 text-primary-foreground" />
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h3 className="font-display text-xl font-semibold text-primary-foreground mb-1">
@@ -342,13 +343,16 @@ export default function PatientDashboard() {
                   Describe your symptoms and get intelligent recommendations for the right specialist.
                 </p>
               </div>
-              <Button variant="hero" size="lg">
-                Try Now
+              <Button variant="hero" size="lg" asChild>
+                <Link to="/ai-doctor-finder">Try Now</Link>
               </Button>
             </div>
           </motion.div>
         </main>
       </div>
+
+      {/* Upload Modal */}
+      <MedicalRecordsUpload isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} />
     </div>
   );
 }
