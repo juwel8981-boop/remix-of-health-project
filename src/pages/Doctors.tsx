@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, ArrowRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Doctor {
+  id: string;
+  full_name: string;
+  specialization: string;
+  hospital_affiliation: string | null;
+  experience_years: number | null;
+  phone: string | null;
+  verification_status: string;
+}
 
 const specialties = [
   "All Specialties",
@@ -591,12 +602,50 @@ export default function Doctors() {
   const [selectedSpecialty, setSelectedSpecialty] = useState("All Specialties");
   const [selectedArea, setSelectedArea] = useState("All Areas");
   const [showFilters, setShowFilters] = useState(false);
+  const [dbDoctors, setDbDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // AI Doctor Finder state
   const [showAIFinder, setShowAIFinder] = useState(false);
   const [symptomText, setSymptomText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+
+  // Fetch approved doctors from database
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      const { data, error } = await supabase
+        .from("doctors")
+        .select("*")
+        .eq("verification_status", "approved")
+        .order("created_at", { ascending: false });
+      
+      if (!error && data) {
+        setDbDoctors(data);
+      }
+      setLoading(false);
+    };
+    fetchDoctors();
+  }, []);
+
+  // Convert database doctors to display format
+  const databaseDoctorsFormatted = dbDoctors.map((doc, index) => ({
+    id: `db-${doc.id}`,
+    name: doc.full_name,
+    specialty: doc.specialization,
+    hospital: doc.hospital_affiliation || "Independent Practice",
+    area: "Dhaka", // Default area since not stored in DB
+    rating: 4.5 + (Math.random() * 0.5), // Placeholder rating
+    reviews: Math.floor(Math.random() * 200) + 50,
+    verified: true,
+    experience: doc.experience_years ? `${doc.experience_years} years` : "N/A",
+    fee: "৳1,000",
+    available: true,
+    image: `https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face`,
+  }));
+
+  // Combine database doctors (shown first) with mock doctors
+  const allDoctors = [...databaseDoctorsFormatted, ...doctors];
 
   const analyzeSymptoms = () => {
     if (symptomText.trim().length === 0) return;
@@ -628,7 +677,7 @@ export default function Doctors() {
     }, 1500);
   };
 
-  const filteredDoctors = doctors.filter((doctor) => {
+  const filteredDoctors = allDoctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doctor.hospital.toLowerCase().includes(searchQuery.toLowerCase());
