@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
@@ -27,6 +28,8 @@ export function Navbar() {
   const [showDashboards, setShowDashboards] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -34,15 +37,44 @@ export function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchUserProfile(session.user.id);
+        } else {
+          setAvatarUrl(null);
+          setUserName(null);
+        }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("avatar_url, full_name")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (profile) {
+      setAvatarUrl(profile.avatar_url);
+      setUserName(profile.full_name);
+    }
+  };
+
+  const getInitials = () => {
+    if (userName) {
+      return userName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return user?.email?.charAt(0).toUpperCase() || "U";
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -131,10 +163,13 @@ export function Navbar() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="max-w-[120px] truncate">{user.email?.split('@')[0]}</span>
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={avatarUrl || undefined} alt="Profile" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="max-w-[120px] truncate">{userName || user.email?.split('@')[0]}</span>
                   <ChevronDown className={cn("w-4 h-4 transition-transform", showUserMenu && "rotate-180")} />
                 </button>
 
@@ -235,8 +270,17 @@ export function Navbar() {
                 <div className="pt-4 space-y-2">
                   {user ? (
                     <>
-                      <div className="px-4 py-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
+                      <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={avatarUrl || undefined} alt="Profile" />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {getInitials()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          {userName && <p className="text-sm font-medium text-foreground truncate">{userName}</p>}
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </div>
                       </div>
                       <Button variant="outline" className="w-full" asChild>
                         <Link to="/settings" onClick={() => setIsOpen(false)}>
