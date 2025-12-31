@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const specialties = [
   "All Specialties",
+  "General Physician",
   "Cardiologist",
   "Neurologist",
   "Pediatrician",
@@ -27,6 +29,22 @@ const areas = [
   "Rangpur",
   "Mymensingh",
 ];
+
+const symptomCategories = [
+  { id: "general", name: "General", symptoms: ["Fever", "Fatigue", "Weight Loss", "Weakness"] },
+  { id: "respiratory", name: "Respiratory", symptoms: ["Cough", "Shortness of Breath", "Chest Pain", "Wheezing"] },
+  { id: "cardiac", name: "Heart", symptoms: ["Palpitations", "Chest Tightness", "Dizziness", "Swelling"] },
+  { id: "neurological", name: "Neurological", symptoms: ["Headache", "Numbness", "Memory Issues", "Tremors"] },
+  { id: "musculoskeletal", name: "Bones & Joints", symptoms: ["Joint Pain", "Back Pain", "Stiffness"] },
+];
+
+const symptomToSpecialty: Record<string, string> = {
+  "Fever": "General Physician", "Fatigue": "General Physician", "Weight Loss": "General Physician", "Weakness": "General Physician",
+  "Cough": "General Physician", "Shortness of Breath": "Cardiologist", "Chest Pain": "Cardiologist", "Wheezing": "General Physician",
+  "Palpitations": "Cardiologist", "Chest Tightness": "Cardiologist", "Dizziness": "Neurologist", "Swelling": "Cardiologist",
+  "Headache": "Neurologist", "Numbness": "Neurologist", "Memory Issues": "Neurologist", "Tremors": "Neurologist",
+  "Joint Pain": "Orthopedic", "Back Pain": "Orthopedic", "Stiffness": "Orthopedic",
+};
 
 const doctors = [
   {
@@ -120,6 +138,41 @@ export default function Doctors() {
   const [selectedSpecialty, setSelectedSpecialty] = useState("All Specialties");
   const [selectedArea, setSelectedArea] = useState("All Areas");
   const [showFilters, setShowFilters] = useState(false);
+  
+  // AI Doctor Finder state
+  const [showAIFinder, setShowAIFinder] = useState(false);
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+
+  const toggleSymptom = (symptom: string) => {
+    setSelectedSymptoms(prev => 
+      prev.includes(symptom) ? prev.filter(s => s !== symptom) : [...prev, symptom]
+    );
+  };
+
+  const analyzeSymptoms = () => {
+    if (selectedSymptoms.length === 0) return;
+    setIsAnalyzing(true);
+    
+    setTimeout(() => {
+      // Find most common specialty from selected symptoms
+      const specialtyCounts: Record<string, number> = {};
+      selectedSymptoms.forEach(symptom => {
+        const spec = symptomToSpecialty[symptom] || "General Physician";
+        specialtyCounts[spec] = (specialtyCounts[spec] || 0) + 1;
+      });
+      
+      const recommendedSpecialty = Object.entries(specialtyCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+      
+      setAiRecommendation(recommendedSpecialty);
+      setSelectedSpecialty(recommendedSpecialty);
+      setIsAnalyzing(false);
+      setShowAIFinder(false);
+      setSelectedSymptoms([]);
+    }, 1500);
+  };
 
   const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -192,8 +245,136 @@ export default function Doctors() {
               </Button>
             </div>
           </motion.div>
+
+          {/* AI Doctor Finder Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex justify-center mt-6"
+          >
+            <Button 
+              onClick={() => setShowAIFinder(true)}
+              className="bg-primary-foreground/10 backdrop-blur-sm text-primary-foreground border border-primary-foreground/20 hover:bg-primary-foreground/20 gap-2"
+            >
+              <Brain className="w-5 h-5" />
+              <span>AI Doctor Finder</span>
+              <Sparkles className="w-4 h-4" />
+            </Button>
+          </motion.div>
         </div>
       </section>
+
+      {/* AI Doctor Finder Dialog */}
+      <Dialog open={showAIFinder} onOpenChange={setShowAIFinder}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="w-6 h-6 text-primary" />
+              AI Doctor Finder
+            </DialogTitle>
+          </DialogHeader>
+          
+          <AnimatePresence mode="wait">
+            {!isAnalyzing ? (
+              <motion.div
+                key="select"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <p className="text-muted-foreground mb-4">
+                  Select your symptoms and our AI will recommend the right specialist.
+                </p>
+                
+                <div className="space-y-4">
+                  {symptomCategories.map((category) => (
+                    <div key={category.id}>
+                      <h4 className="font-medium text-foreground mb-2">{category.name}</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {category.symptoms.map((symptom) => (
+                          <button
+                            key={symptom}
+                            onClick={() => toggleSymptom(symptom)}
+                            className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                              selectedSymptoms.includes(symptom)
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            {symptom}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {selectedSymptoms.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 pt-4 border-t"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Selected: <span className="text-foreground font-medium">{selectedSymptoms.join(", ")}</span>
+                      </p>
+                      <Button onClick={analyzeSymptoms} className="gap-2">
+                        <Brain className="w-4 h-4" />
+                        Find Doctor
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="analyzing"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center py-12"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 relative">
+                  <Brain className="w-8 h-8 text-primary" />
+                  <div className="absolute inset-0 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+                </div>
+                <p className="text-foreground font-medium">Analyzing symptoms...</p>
+                <p className="text-sm text-muted-foreground">Finding the best specialist for you</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Recommendation Banner */}
+      {aiRecommendation && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-primary/10 border-b border-primary/20"
+        >
+          <div className="healthcare-container py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <p className="text-foreground">
+                  <span className="font-medium">AI Recommendation:</span> Based on your symptoms, we suggest seeing a{" "}
+                  <span className="text-primary font-semibold">{aiRecommendation}</span>
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => {
+                setAiRecommendation(null);
+                setSelectedSpecialty("All Specialties");
+              }}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Main Content */}
       <section className="healthcare-section">
