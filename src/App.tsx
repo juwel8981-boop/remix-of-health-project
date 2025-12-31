@@ -22,6 +22,7 @@ import DoctorSignup from "./pages/DoctorSignup";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
 import ResetPassword from "./pages/ResetPassword";
+import ProfileSettings from "./pages/ProfileSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,8 @@ const App = () => (
             <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
             <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+            {/* Profile Settings - Protected but no specific role required */}
+            <Route path="/settings" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
           </Route>
           {/* Auth routes - outside MainLayout */}
           <Route path="/signup" element={<SignupSelection />} />
