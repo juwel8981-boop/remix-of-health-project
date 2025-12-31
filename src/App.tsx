@@ -21,6 +21,7 @@ import PatientSignup from "./pages/PatientSignup";
 import DoctorSignup from "./pages/DoctorSignup";
 import Login from "./pages/Login";
 import AdminLogin from "./pages/AdminLogin";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
           <Route path="/signup/doctor" element={<DoctorSignup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Legacy auth route redirect */}
           <Route path="/auth" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
