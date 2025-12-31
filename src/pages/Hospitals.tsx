@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown } from "lucide-react";
+import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FacilitiesMap } from "@/components/FacilitiesMap";
 
 const locations = [
   { value: "all", label: "All Locations" },
@@ -29,6 +30,8 @@ const hospitals = [
     emergency: true,
     specialties: ["Cardiology", "Neurology", "Orthopedics", "Oncology"],
     image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
+    lat: 23.7260,
+    lng: 90.3980,
   },
   {
     id: 2,
@@ -43,6 +46,8 @@ const hospitals = [
     emergency: true,
     specialties: ["Cardiac Surgery", "Nephrology", "Gastroenterology"],
     image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop",
+    lat: 23.7525,
+    lng: 90.3800,
   },
   {
     id: 3,
@@ -57,6 +62,8 @@ const hospitals = [
     emergency: true,
     specialties: ["General Surgery", "Medicine", "Pediatrics"],
     image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&h=400&fit=crop",
+    lat: 22.3590,
+    lng: 91.8318,
   },
   {
     id: 4,
@@ -71,6 +78,8 @@ const hospitals = [
     emergency: true,
     specialties: ["Cardiology", "Orthopedics", "Gynecology"],
     image: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop",
+    lat: 24.3745,
+    lng: 88.6042,
   },
   {
     id: 5,
@@ -85,6 +94,8 @@ const hospitals = [
     emergency: true,
     specialties: ["Transplant Surgery", "Oncology", "Neurosurgery"],
     image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop",
+    lat: 23.8130,
+    lng: 90.4312,
   },
   {
     id: 6,
@@ -99,6 +110,8 @@ const hospitals = [
     emergency: true,
     specialties: ["Medicine", "Surgery", "ENT"],
     image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
+    lat: 24.8998,
+    lng: 91.8710,
   },
 ];
 
@@ -114,6 +127,8 @@ const diagnostics = [
     distance: "1.8 km",
     services: ["Blood Tests", "X-Ray", "MRI", "CT Scan", "ECG"],
     image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
+    lat: 23.7461,
+    lng: 90.3742,
   },
   {
     id: 2,
@@ -126,6 +141,8 @@ const diagnostics = [
     distance: "2.3 km",
     services: ["Pathology", "Radiology", "Ultrasound", "Endoscopy"],
     image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop",
+    lat: 23.7505,
+    lng: 90.3731,
   },
   {
     id: 3,
@@ -138,6 +155,8 @@ const diagnostics = [
     distance: "2.5 km",
     services: ["All Lab Tests", "Imaging", "Health Packages"],
     image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=600&h=400&fit=crop",
+    lat: 22.3475,
+    lng: 91.8123,
   },
   {
     id: 4,
@@ -150,6 +169,8 @@ const diagnostics = [
     distance: "1.5 km",
     services: ["Blood Tests", "ECG", "X-Ray", "Ultrasound"],
     image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
+    lat: 24.3636,
+    lng: 88.6241,
   },
   {
     id: 5,
@@ -162,11 +183,14 @@ const diagnostics = [
     distance: "1.2 km",
     services: ["Pathology", "Radiology", "Health Checkup"],
     image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop",
+    lat: 24.8949,
+    lng: 91.8687,
   },
 ];
 
 export default function Hospitals() {
   const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">("hospitals");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -267,30 +291,58 @@ export default function Hospitals() {
             </div>
           </motion.div>
 
-          {/* Tabs */}
-          <div className="flex justify-center gap-4 mt-8">
-            <button
-              onClick={() => setActiveTab("hospitals")}
-              className={`px-6 py-3 rounded-xl font-medium transition-all ${
-                activeTab === "hospitals"
-                  ? "bg-card text-foreground shadow-healthcare"
-                  : "text-primary-foreground/70 hover:text-primary-foreground"
-              }`}
-            >
-              <Building2 className="w-5 h-5 inline-block mr-2" />
-              Hospitals
-            </button>
-            <button
-              onClick={() => setActiveTab("diagnostics")}
-              className={`px-6 py-3 rounded-xl font-medium transition-all ${
-                activeTab === "diagnostics"
-                  ? "bg-card text-foreground shadow-healthcare"
-                  : "text-primary-foreground/70 hover:text-primary-foreground"
-              }`}
-            >
-              <Stethoscope className="w-5 h-5 inline-block mr-2" />
-              Diagnostics
-            </button>
+          {/* Tabs & View Toggle */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("hospitals")}
+                className={`px-6 py-3 rounded-xl font-medium transition-all ${
+                  activeTab === "hospitals"
+                    ? "bg-card text-foreground shadow-healthcare"
+                    : "text-primary-foreground/70 hover:text-primary-foreground"
+                }`}
+              >
+                <Building2 className="w-5 h-5 inline-block mr-2" />
+                Hospitals
+              </button>
+              <button
+                onClick={() => setActiveTab("diagnostics")}
+                className={`px-6 py-3 rounded-xl font-medium transition-all ${
+                  activeTab === "diagnostics"
+                    ? "bg-card text-foreground shadow-healthcare"
+                    : "text-primary-foreground/70 hover:text-primary-foreground"
+                }`}
+              >
+                <Stethoscope className="w-5 h-5 inline-block mr-2" />
+                Diagnostics
+              </button>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex bg-card/20 backdrop-blur-sm rounded-xl p-1">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  viewMode === "list"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-primary-foreground/70 hover:text-primary-foreground"
+                }`}
+              >
+                <List className="w-4 h-4" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  viewMode === "map"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-primary-foreground/70 hover:text-primary-foreground"
+                }`}
+              >
+                <Map className="w-4 h-4" />
+                Map
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -298,130 +350,146 @@ export default function Hospitals() {
       {/* Main Content */}
       <section className="healthcare-section">
         <div className="healthcare-container">
-          {activeTab === "hospitals" ? (
-            <div className="grid md:grid-cols-2 gap-6">
-              {filteredHospitals.map((hospital, index) => (
-                <motion.div
-                  key={hospital.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="healthcare-card overflow-hidden"
-                >
-                  <div className="relative h-48 -m-6 mb-4">
-                    <img
-                      src={hospital.image}
-                      alt={hospital.name}
-                      className="w-full h-full object-cover"
-                    />
-                    {hospital.emergency && (
-                      <span className="absolute top-4 right-4 bg-healthcare-red text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
-                        24/7 Emergency
-                      </span>
-                    )}
-                    <span className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-foreground px-3 py-1 rounded-full text-xs font-medium">
-                      {hospital.type}
-                    </span>
-                  </div>
-
-                  <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                    {hospital.name}
-                  </h3>
-
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
-                    <MapPin className="w-4 h-4" />
-                    <span>{hospital.address}</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {hospital.specialties.slice(0, 3).map((spec) => (
-                      <span key={spec} className="healthcare-badge text-xs">
-                        {spec}
-                      </span>
-                    ))}
-                    {hospital.specialties.length > 3 && (
-                      <span className="healthcare-badge text-xs">
-                        +{hospital.specialties.length - 3} more
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-accent fill-accent" />
-                        <span className="font-semibold text-foreground">{hospital.rating}</span>
-                        <span className="text-sm text-muted-foreground">({hospital.reviews})</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                        <Navigation className="w-4 h-4" />
-                        <span>{hospital.distance}</span>
-                      </div>
-                    </div>
-                    <Button variant="healthcare" size="sm">
-                      <Phone className="w-4 h-4 mr-1" />
-                      Contact
-                    </Button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          {viewMode === "map" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <FacilitiesMap
+                hospitals={filteredHospitals}
+                diagnostics={filteredDiagnostics}
+                activeTab={activeTab}
+                selectedLocation={selectedLocation}
+              />
+            </motion.div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDiagnostics.map((diagnostic, index) => (
-                <motion.div
-                  key={diagnostic.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="healthcare-card overflow-hidden"
-                >
-                  <div className="relative h-40 -m-6 mb-4">
-                    <img
-                      src={diagnostic.image}
-                      alt={diagnostic.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+            <>
+              {activeTab === "hospitals" ? (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {filteredHospitals.map((hospital, index) => (
+                    <motion.div
+                      key={hospital.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="healthcare-card overflow-hidden"
+                    >
+                      <div className="relative h-48 -m-6 mb-4">
+                        <img
+                          src={hospital.image}
+                          alt={hospital.name}
+                          className="w-full h-full object-cover"
+                        />
+                        {hospital.emergency && (
+                          <span className="absolute top-4 right-4 bg-healthcare-red text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
+                            24/7 Emergency
+                          </span>
+                        )}
+                        <span className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-foreground px-3 py-1 rounded-full text-xs font-medium">
+                          {hospital.type}
+                        </span>
+                      </div>
 
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                    {diagnostic.name}
-                  </h3>
+                      <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+                        {hospital.name}
+                      </h3>
 
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
-                    <MapPin className="w-4 h-4" />
-                    <span className="truncate">{diagnostic.address}</span>
-                  </div>
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
+                        <MapPin className="w-4 h-4" />
+                        <span>{hospital.address}</span>
+                      </div>
 
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {diagnostic.services.slice(0, 3).map((service) => (
-                      <span key={service} className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded">
-                        {service}
-                      </span>
-                    ))}
-                  </div>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {hospital.specialties.slice(0, 3).map((spec) => (
+                          <span key={spec} className="healthcare-badge text-xs">
+                            {spec}
+                          </span>
+                        ))}
+                        {hospital.specialties.length > 3 && (
+                          <span className="healthcare-badge text-xs">
+                            +{hospital.specialties.length - 3} more
+                          </span>
+                        )}
+                      </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-accent fill-accent" />
-                      <span className="font-semibold text-foreground">{diagnostic.rating}</span>
-                      <span className="text-xs text-muted-foreground">({diagnostic.reviews})</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                      <Navigation className="w-4 h-4" />
-                      <span>{diagnostic.distance}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
+                      <div className="flex items-center justify-between pt-4 border-t border-border">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-accent fill-accent" />
+                            <span className="font-semibold text-foreground">{hospital.rating}</span>
+                            <span className="text-sm text-muted-foreground">({hospital.reviews})</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                            <Navigation className="w-4 h-4" />
+                            <span>{hospital.distance}</span>
+                          </div>
+                        </div>
+                        <Button variant="healthcare" size="sm">
+                          <Phone className="w-4 h-4 mr-1" />
+                          Contact
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredDiagnostics.map((diagnostic, index) => (
+                    <motion.div
+                      key={diagnostic.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="healthcare-card overflow-hidden"
+                    >
+                      <div className="relative h-40 -m-6 mb-4">
+                        <img
+                          src={diagnostic.image}
+                          alt={diagnostic.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
 
-          {((activeTab === "hospitals" && filteredHospitals.length === 0) ||
-            (activeTab === "diagnostics" && filteredDiagnostics.length === 0)) && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No facilities found matching your search.</p>
-            </div>
+                      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                        {diagnostic.name}
+                      </h3>
+
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
+                        <MapPin className="w-4 h-4" />
+                        <span className="truncate">{diagnostic.address}</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {diagnostic.services.slice(0, 3).map((service) => (
+                          <span key={service} className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded">
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-border">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-accent fill-accent" />
+                          <span className="font-semibold text-foreground">{diagnostic.rating}</span>
+                          <span className="text-xs text-muted-foreground">({diagnostic.reviews})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                          <Navigation className="w-4 h-4" />
+                          <span>{diagnostic.distance}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {((activeTab === "hospitals" && filteredHospitals.length === 0) ||
+                (activeTab === "diagnostics" && filteredDiagnostics.length === 0)) && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No facilities found matching your search.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
