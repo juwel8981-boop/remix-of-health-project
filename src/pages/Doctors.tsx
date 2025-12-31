@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, ArrowRight } from "lucide-react";
+import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, ArrowRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const specialties = [
   "All Specialties",
@@ -30,21 +31,18 @@ const areas = [
   "Mymensingh",
 ];
 
-const symptomCategories = [
-  { id: "general", name: "General", symptoms: ["Fever", "Fatigue", "Weight Loss", "Weakness"] },
-  { id: "respiratory", name: "Respiratory", symptoms: ["Cough", "Shortness of Breath", "Chest Pain", "Wheezing"] },
-  { id: "cardiac", name: "Heart", symptoms: ["Palpitations", "Chest Tightness", "Dizziness", "Swelling"] },
-  { id: "neurological", name: "Neurological", symptoms: ["Headache", "Numbness", "Memory Issues", "Tremors"] },
-  { id: "musculoskeletal", name: "Bones & Joints", symptoms: ["Joint Pain", "Back Pain", "Stiffness"] },
+// Symptom keywords mapped to specialties for AI analysis
+const symptomKeywords: { keywords: string[]; specialty: string }[] = [
+  { keywords: ["heart", "chest pain", "palpitation", "blood pressure", "hypertension", "cardiac", "heartbeat", "angina"], specialty: "Cardiologist" },
+  { keywords: ["headache", "migraine", "seizure", "numbness", "memory", "tremor", "nerve", "brain", "stroke", "paralysis"], specialty: "Neurologist" },
+  { keywords: ["skin", "rash", "acne", "eczema", "itching", "allergy", "hair loss", "psoriasis", "dermatitis"], specialty: "Dermatologist" },
+  { keywords: ["bone", "joint", "fracture", "back pain", "spine", "arthritis", "knee", "shoulder", "hip", "muscle pain"], specialty: "Orthopedic" },
+  { keywords: ["pregnancy", "menstrual", "period", "gynec", "uterus", "ovary", "fertility", "contraception", "menopause"], specialty: "Gynecologist" },
+  { keywords: ["child", "baby", "infant", "pediatric", "vaccination", "growth", "developmental"], specialty: "Pediatrician" },
+  { keywords: ["ear", "nose", "throat", "hearing", "sinus", "tonsil", "vertigo", "snoring", "voice"], specialty: "ENT Specialist" },
+  { keywords: ["anxiety", "depression", "stress", "mental", "sleep disorder", "insomnia", "mood", "panic", "psychiatric"], specialty: "Psychiatrist" },
+  { keywords: ["fever", "cold", "cough", "flu", "fatigue", "weakness", "general", "body ache", "infection"], specialty: "General Physician" },
 ];
-
-const symptomToSpecialty: Record<string, string> = {
-  "Fever": "General Physician", "Fatigue": "General Physician", "Weight Loss": "General Physician", "Weakness": "General Physician",
-  "Cough": "General Physician", "Shortness of Breath": "Cardiologist", "Chest Pain": "Cardiologist", "Wheezing": "General Physician",
-  "Palpitations": "Cardiologist", "Chest Tightness": "Cardiologist", "Dizziness": "Neurologist", "Swelling": "Cardiologist",
-  "Headache": "Neurologist", "Numbness": "Neurologist", "Memory Issues": "Neurologist", "Tremors": "Neurologist",
-  "Joint Pain": "Orthopedic", "Back Pain": "Orthopedic", "Stiffness": "Orthopedic",
-};
 
 const doctors = [
   {
@@ -141,36 +139,37 @@ export default function Doctors() {
   
   // AI Doctor Finder state
   const [showAIFinder, setShowAIFinder] = useState(false);
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [symptomText, setSymptomText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
 
-  const toggleSymptom = (symptom: string) => {
-    setSelectedSymptoms(prev => 
-      prev.includes(symptom) ? prev.filter(s => s !== symptom) : [...prev, symptom]
-    );
-  };
-
   const analyzeSymptoms = () => {
-    if (selectedSymptoms.length === 0) return;
+    if (symptomText.trim().length === 0) return;
     setIsAnalyzing(true);
     
     setTimeout(() => {
-      // Find most common specialty from selected symptoms
+      const text = symptomText.toLowerCase();
       const specialtyCounts: Record<string, number> = {};
-      selectedSymptoms.forEach(symptom => {
-        const spec = symptomToSpecialty[symptom] || "General Physician";
-        specialtyCounts[spec] = (specialtyCounts[spec] || 0) + 1;
+      
+      // Match keywords in user's text to find relevant specialties
+      symptomKeywords.forEach(({ keywords, specialty }) => {
+        keywords.forEach(keyword => {
+          if (text.includes(keyword.toLowerCase())) {
+            specialtyCounts[specialty] = (specialtyCounts[specialty] || 0) + 1;
+          }
+        });
       });
       
-      const recommendedSpecialty = Object.entries(specialtyCounts)
-        .sort((a, b) => b[1] - a[1])[0][0];
+      // Get the specialty with most keyword matches, default to General Physician
+      const recommendedSpecialty = Object.entries(specialtyCounts).length > 0
+        ? Object.entries(specialtyCounts).sort((a, b) => b[1] - a[1])[0][0]
+        : "General Physician";
       
       setAiRecommendation(recommendedSpecialty);
       setSelectedSpecialty(recommendedSpecialty);
       setIsAnalyzing(false);
       setShowAIFinder(false);
-      setSelectedSymptoms([]);
+      setSymptomText("");
     }, 1500);
   };
 
@@ -282,52 +281,32 @@ export default function Doctors() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                className="space-y-4"
               >
-                <p className="text-muted-foreground mb-4">
-                  Select your symptoms and our AI will recommend the right specialist.
+                <p className="text-muted-foreground">
+                  Describe your symptoms in detail and our AI will recommend the right specialist.
                 </p>
                 
-                <div className="space-y-4">
-                  {symptomCategories.map((category) => (
-                    <div key={category.id}>
-                      <h4 className="font-medium text-foreground mb-2">{category.name}</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {category.symptoms.map((symptom) => (
-                          <button
-                            key={symptom}
-                            onClick={() => toggleSymptom(symptom)}
-                            className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                              selectedSymptoms.includes(symptom)
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80"
-                            }`}
-                          >
-                            {symptom}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <Textarea
+                  placeholder="E.g., I've been having severe headaches for the past week, along with dizziness and sometimes blurred vision..."
+                  value={symptomText}
+                  onChange={(e) => setSymptomText(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                />
 
-                {selectedSymptoms.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 pt-4 border-t"
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Be as detailed as possible for better recommendations
+                  </p>
+                  <Button 
+                    onClick={analyzeSymptoms} 
+                    disabled={symptomText.trim().length === 0}
+                    className="gap-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        Selected: <span className="text-foreground font-medium">{selectedSymptoms.join(", ")}</span>
-                      </p>
-                      <Button onClick={analyzeSymptoms} className="gap-2">
-                        <Brain className="w-4 h-4" />
-                        Find Doctor
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
+                    <Send className="w-4 h-4" />
+                    Analyze Symptoms
+                  </Button>
+                </div>
               </motion.div>
             ) : (
               <motion.div
