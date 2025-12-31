@@ -92,12 +92,12 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="hidden lg:flex items-center gap-3">
-            <Button variant="ghost" asChild>
-              <Link to="/login">Log In</Link>
+          {/* CTA Buttons - Always visible on desktop */}
+          <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Sign In</Link>
             </Button>
-            <Button variant="accent" asChild>
+            <Button variant="accent" size="sm" asChild>
               <Link to="/signup">Get Started</Link>
             </Button>
           </div>
