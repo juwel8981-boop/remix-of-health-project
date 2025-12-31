@@ -1,9 +1,12 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield } from "lucide-react";
+import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { User as SupabaseUser } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
 const navLinks = [
   { name: "Find Doctors", href: "/doctors" },
@@ -22,7 +25,35 @@ const dashboardLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showDashboards, setShowDashboards] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Failed to log out");
+    } else {
+      toast.success("Logged out successfully");
+      setShowUserMenu(false);
+      navigate("/");
+    }
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -94,12 +125,51 @@ export function Navbar() {
 
           {/* CTA Buttons - Always visible on desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/login">Sign In</Link>
-            </Button>
-            <Button variant="accent" size="sm" asChild>
-              <Link to="/signup">Get Started</Link>
-            </Button>
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="max-w-[120px] truncate">{user.email?.split('@')[0]}</span>
+                  <ChevronDown className={cn("w-4 h-4 transition-transform", showUserMenu && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {showUserMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute top-full right-0 mt-2 w-48 bg-card rounded-xl border border-border shadow-healthcare-lg overflow-hidden z-50"
+                    >
+                      <div className="px-4 py-3 border-b border-border">
+                        <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button variant="accent" size="sm" asChild>
+                  <Link to="/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -155,12 +225,33 @@ export function Navbar() {
                 </div>
 
                 <div className="pt-4 space-y-2">
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link to="/login">Log In</Link>
-                  </Button>
-                  <Button variant="accent" className="w-full" asChild>
-                    <Link to="/signup">Get Started</Link>
-                  </Button>
+                  {user ? (
+                    <>
+                      <div className="px-4 py-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" 
+                        onClick={() => {
+                          handleLogout();
+                          setIsOpen(false);
+                        }}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to="/login">Sign In</Link>
+                      </Button>
+                      <Button variant="accent" className="w-full" asChild>
+                        <Link to="/signup">Get Started</Link>
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
