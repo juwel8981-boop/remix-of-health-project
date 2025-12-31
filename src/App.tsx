@@ -6,12 +6,15 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import Index from "./pages/Index";
 import Doctors from "./pages/Doctors";
+import DoctorProfile from "./pages/DoctorProfile";
 import Hospitals from "./pages/Hospitals";
 import VerifyDoctor from "./pages/VerifyDoctor";
 import Articles from "./pages/Articles";
+import ArticleDetail from "./pages/ArticleDetail";
 import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AIDoctorFinder from "./pages/AIDoctorFinder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,10 +29,13 @@ const App = () => (
           <Route element={<MainLayout />}>
             <Route path="/" element={<Index />} />
             <Route path="/doctors" element={<Doctors />} />
+            <Route path="/doctors/:id" element={<DoctorProfile />} />
             <Route path="/hospitals" element={<Hospitals />} />
             <Route path="/diagnostics" element={<Hospitals />} />
             <Route path="/verify-doctor" element={<VerifyDoctor />} />
             <Route path="/articles" element={<Articles />} />
+            <Route path="/articles/:id" element={<ArticleDetail />} />
+            <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
             <Route path="/patient" element={<PatientDashboard />} />
             <Route path="/doctor" element={<DoctorDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
