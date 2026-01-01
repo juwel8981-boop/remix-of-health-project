@@ -27,6 +27,8 @@ interface PatientProfile {
   blood_group: string | null;
   address: string | null;
   emergency_contact: string | null;
+  weight: number | null;
+  height: number | null;
 }
 
 interface DoctorProfile {
@@ -189,6 +191,8 @@ export default function ProfileSettings() {
         blood_group: patientProfile.blood_group,
         address: patientProfile.address,
         emergency_contact: patientProfile.emergency_contact,
+        weight: patientProfile.weight,
+        height: patientProfile.height,
       })
       .eq("id", patientProfile.id);
 
@@ -464,6 +468,31 @@ export default function ProfileSettings() {
                               <SelectItem value="O-">O-</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="weight">Weight (kg)</Label>
+                          <Input
+                            id="weight"
+                            type="number"
+                            step="0.1"
+                            value={patientProfile.weight || ""}
+                            onChange={(e) => setPatientProfile({ ...patientProfile, weight: e.target.value ? parseFloat(e.target.value) : null })}
+                            placeholder="e.g., 70"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="height">Height (cm)</Label>
+                          <Input
+                            id="height"
+                            type="number"
+                            step="0.1"
+                            value={patientProfile.height || ""}
+                            onChange={(e) => setPatientProfile({ ...patientProfile, height: e.target.value ? parseFloat(e.target.value) : null })}
+                            placeholder="e.g., 170"
+                          />
                         </div>
                       </div>
 

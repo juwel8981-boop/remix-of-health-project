@@ -2,12 +2,18 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Download, Plus, ChevronRight, Brain, Droplet, Ruler, Scale
+  Heart, TrendingUp, Download, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { MedicalRecordsUpload } from "@/components/MedicalRecordsUpload";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/hooks/use-toast";
+
 const sidebarLinks = [
   { name: "Overview", icon: Activity, href: "/patient" },
   { name: "My Profile", icon: User, href: "/patient/profile" },
@@ -62,11 +68,36 @@ const recentRecords = [
   },
 ];
 
-const medications = [
-  { name: "Metformin", dosage: "500mg", frequency: "Twice daily", remaining: 15 },
-  { name: "Lisinopril", dosage: "10mg", frequency: "Once daily", remaining: 8 },
-  { name: "Vitamin D", dosage: "1000IU", frequency: "Once daily", remaining: 25 },
-];
+interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  remaining: number;
+  reminder_time: string | null;
+  reminder_enabled: boolean;
+  notes: string | null;
+}
+
+interface MedicationFormData {
+  name: string;
+  dosage: string;
+  frequency: string;
+  remaining: number;
+  reminder_time: string;
+  reminder_enabled: boolean;
+  notes: string;
+}
+
+const defaultMedicationForm: MedicationFormData = {
+  name: "",
+  dosage: "",
+  frequency: "",
+  remaining: 0,
+  reminder_time: "08:00",
+  reminder_enabled: false,
+  notes: ""
+};
 
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -75,7 +106,15 @@ export default function PatientDashboard() {
     full_name: string;
     blood_group: string | null;
     date_of_birth: string | null;
+    weight: number | null;
+    height: number | null;
   } | null>(null);
+  
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [showMedicationDialog, setShowMedicationDialog] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [medicationForm, setMedicationForm] = useState<MedicationFormData>(defaultMedicationForm);
+  const [savingMedication, setSavingMedication] = useState(false);
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -83,7 +122,7 @@ export default function PatientDashboard() {
       if (user) {
         const { data } = await supabase
           .from('patients')
-          .select('full_name, blood_group, date_of_birth')
+          .select('full_name, blood_group, date_of_birth, weight, height')
           .eq('user_id', user.id)
           .maybeSingle();
         if (data) {
@@ -94,7 +133,25 @@ export default function PatientDashboard() {
     fetchPatientData();
   }, []);
 
-  // Calculate age from date of birth
+  useEffect(() => {
+    fetchMedications();
+  }, []);
+
+  const fetchMedications = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data, error } = await supabase
+        .from('medications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (data && !error) {
+        setMedications(data);
+      }
+    }
+  };
+
   const calculateAge = (dob: string | null): string => {
     if (!dob) return "--";
     const birthDate = new Date(dob);
@@ -107,14 +164,146 @@ export default function PatientDashboard() {
     return age.toString();
   };
 
+  const calculateBMI = (weight: number | null, height: number | null): { value: string; status: string } => {
+    if (!weight || !height) return { value: "--", status: "unknown" };
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+    const bmiValue = bmi.toFixed(1);
+    
+    let status = "normal";
+    if (bmi < 18.5) status = "underweight";
+    else if (bmi >= 25 && bmi < 30) status = "overweight";
+    else if (bmi >= 30) status = "obese";
+    
+    return { value: bmiValue, status };
+  };
+
   const firstName = patientData?.full_name?.split(' ')[0] || 'User';
+  const bmiData = calculateBMI(patientData?.weight ?? null, patientData?.height ?? null);
 
   const healthStats = [
-    { label: "Age", value: calculateAge(patientData?.date_of_birth ?? null), unit: "years", status: "stable", icon: User },
-    { label: "Blood Group", value: patientData?.blood_group || "--", unit: "", status: "stable", icon: Droplet },
-    { label: "Weight", value: "68", unit: "kg", status: "stable", icon: Scale },
-    { label: "Height", value: "170", unit: "cm", status: "stable", icon: Ruler },
+    { label: "Age", value: calculateAge(patientData?.date_of_birth ?? null), unit: "years", status: "normal", icon: User },
+    { label: "Blood Group", value: patientData?.blood_group || "--", unit: "", status: "normal", icon: Droplet },
+    { label: "Weight", value: patientData?.weight?.toString() || "--", unit: "kg", status: "normal", icon: Scale },
+    { label: "Height", value: patientData?.height?.toString() || "--", unit: "cm", status: "normal", icon: Ruler },
+    { label: "BMI", value: bmiData.value, unit: "", status: bmiData.status === "unknown" ? "normal" : bmiData.status, icon: TrendingUp },
   ];
+
+  const openAddMedicationDialog = () => {
+    setEditingMedication(null);
+    setMedicationForm(defaultMedicationForm);
+    setShowMedicationDialog(true);
+  };
+
+  const openEditMedicationDialog = (medication: Medication) => {
+    setEditingMedication(medication);
+    setMedicationForm({
+      name: medication.name,
+      dosage: medication.dosage,
+      frequency: medication.frequency,
+      remaining: medication.remaining,
+      reminder_time: medication.reminder_time || "08:00",
+      reminder_enabled: medication.reminder_enabled,
+      notes: medication.notes || ""
+    });
+    setShowMedicationDialog(true);
+  };
+
+  const handleSaveMedication = async () => {
+    if (!medicationForm.name.trim() || !medicationForm.dosage.trim() || !medicationForm.frequency.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSavingMedication(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in",
+        variant: "destructive"
+      });
+      setSavingMedication(false);
+      return;
+    }
+
+    const medicationData = {
+      name: medicationForm.name.trim(),
+      dosage: medicationForm.dosage.trim(),
+      frequency: medicationForm.frequency.trim(),
+      remaining: medicationForm.remaining,
+      reminder_time: medicationForm.reminder_enabled ? medicationForm.reminder_time : null,
+      reminder_enabled: medicationForm.reminder_enabled,
+      notes: medicationForm.notes.trim() || null,
+      user_id: user.id
+    };
+
+    if (editingMedication) {
+      const { error } = await supabase
+        .from('medications')
+        .update(medicationData)
+        .eq('id', editingMedication.id);
+      
+      if (error) {
+        toast({ title: "Error", description: "Failed to update medication", variant: "destructive" });
+      } else {
+        toast({ title: "Success", description: "Medication updated successfully" });
+        setShowMedicationDialog(false);
+        fetchMedications();
+      }
+    } else {
+      const { error } = await supabase
+        .from('medications')
+        .insert(medicationData);
+      
+      if (error) {
+        toast({ title: "Error", description: "Failed to add medication", variant: "destructive" });
+      } else {
+        toast({ title: "Success", description: "Medication added successfully" });
+        setShowMedicationDialog(false);
+        fetchMedications();
+      }
+    }
+    setSavingMedication(false);
+  };
+
+  const handleDeleteMedication = async (id: string) => {
+    const { error } = await supabase
+      .from('medications')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to delete medication", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Medication deleted successfully" });
+      fetchMedications();
+    }
+  };
+
+  const toggleReminder = async (medication: Medication) => {
+    const { error } = await supabase
+      .from('medications')
+      .update({ reminder_enabled: !medication.reminder_enabled })
+      .eq('id', medication.id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to update reminder", variant: "destructive" });
+    } else {
+      toast({
+        title: medication.reminder_enabled ? "Reminder disabled" : "Reminder enabled",
+        description: medication.reminder_enabled 
+          ? `Reminder for ${medication.name} has been turned off`
+          : `You'll be reminded to take ${medication.name} at ${medication.reminder_time || "08:00"}`
+      });
+      fetchMedications();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-muted">
@@ -170,7 +359,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* Health Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             {healthStats.map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -186,6 +375,10 @@ export default function PatientDashboard() {
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                     stat.status === "normal" 
                       ? "bg-healthcare-green-light text-healthcare-green" 
+                      : stat.status === "underweight" || stat.status === "overweight"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : stat.status === "obese"
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                       : "bg-muted text-muted-foreground"
                   }`}>
                     {stat.status}
@@ -266,36 +459,56 @@ export default function PatientDashboard() {
                 <h2 className="font-display text-lg font-semibold text-foreground">
                   My Medications
                 </h2>
-                <Pill className="w-5 h-5 text-primary" />
+                <Button variant="outline" size="sm" onClick={openAddMedicationDialog}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
               </div>
 
-              <div className="space-y-4">
-                {medications.map((med) => (
-                  <div key={med.name} className="p-3 rounded-lg bg-muted">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-foreground">{med.name}</h4>
-                      <span className="text-sm text-muted-foreground">{med.dosage}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">{med.frequency}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${(med.remaining / 30) * 100}%` }}
-                        />
+              {medications.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Pill className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No medications added yet</p>
+                  <Button variant="link" onClick={openAddMedicationDialog}>Add your first medication</Button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {medications.map((med) => (
+                    <div key={med.id} className="p-3 rounded-lg bg-muted group">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-medium text-foreground">{med.name}</h4>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMedicationDialog(med)}>
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteMedication(med.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {med.remaining} left
-                      </span>
+                      <p className="text-sm text-muted-foreground">{med.dosage} • {med.frequency}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex-1 h-2 bg-border rounded-full overflow-hidden mr-2">
+                          <div 
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.min((med.remaining / 30) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {med.remaining} left
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => toggleReminder(med)}
+                        className={`mt-2 text-xs flex items-center gap-1 ${med.reminder_enabled ? 'text-primary' : 'text-muted-foreground hover:text-primary'} transition-colors`}
+                      >
+                        <Clock className="w-3 h-3" />
+                        {med.reminder_enabled ? `Reminder at ${med.reminder_time}` : 'Set Reminder'}
+                      </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              <Button variant="ghost" size="sm" className="w-full mt-4">
-                <Bell className="w-4 h-4 mr-2" />
-                Set Reminder
-              </Button>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
 
@@ -391,6 +604,103 @@ export default function PatientDashboard() {
 
       {/* Upload Modal */}
       <MedicalRecordsUpload isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} />
+
+      {/* Medication Dialog */}
+      <Dialog open={showMedicationDialog} onOpenChange={setShowMedicationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingMedication ? 'Edit Medication' : 'Add New Medication'}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="med-name">Medication Name *</Label>
+              <Input 
+                id="med-name"
+                placeholder="e.g., Lisinopril"
+                value={medicationForm.name}
+                onChange={(e) => setMedicationForm({ ...medicationForm, name: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="med-dosage">Dosage *</Label>
+                <Input 
+                  id="med-dosage"
+                  placeholder="e.g., 10mg"
+                  value={medicationForm.dosage}
+                  onChange={(e) => setMedicationForm({ ...medicationForm, dosage: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="med-frequency">Frequency *</Label>
+                <Input 
+                  id="med-frequency"
+                  placeholder="e.g., Once daily"
+                  value={medicationForm.frequency}
+                  onChange={(e) => setMedicationForm({ ...medicationForm, frequency: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="med-remaining">Pills Remaining</Label>
+              <Input 
+                id="med-remaining"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={medicationForm.remaining}
+                onChange={(e) => setMedicationForm({ ...medicationForm, remaining: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Daily Reminder</p>
+                  <p className="text-sm text-muted-foreground">Get notified when it's time to take</p>
+                </div>
+              </div>
+              <Switch 
+                checked={medicationForm.reminder_enabled}
+                onCheckedChange={(checked) => setMedicationForm({ ...medicationForm, reminder_enabled: checked })}
+              />
+            </div>
+            
+            {medicationForm.reminder_enabled && (
+              <div className="space-y-2">
+                <Label htmlFor="med-time">Reminder Time</Label>
+                <Input 
+                  id="med-time"
+                  type="time"
+                  value={medicationForm.reminder_time}
+                  onChange={(e) => setMedicationForm({ ...medicationForm, reminder_time: e.target.value })}
+                />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="med-notes">Notes (optional)</Label>
+              <Input 
+                id="med-notes"
+                placeholder="e.g., Take with food"
+                value={medicationForm.notes}
+                onChange={(e) => setMedicationForm({ ...medicationForm, notes: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMedicationDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveMedication} disabled={savingMedication}>
+              {savingMedication ? 'Saving...' : editingMedication ? 'Update' : 'Add Medication'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

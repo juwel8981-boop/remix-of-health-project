@@ -200,6 +200,48 @@ export type Database = {
         }
         Relationships: []
       }
+      medications: {
+        Row: {
+          created_at: string
+          dosage: string
+          frequency: string
+          id: string
+          name: string
+          notes: string | null
+          remaining: number | null
+          reminder_enabled: boolean | null
+          reminder_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dosage: string
+          frequency: string
+          id?: string
+          name: string
+          notes?: string | null
+          remaining?: number | null
+          reminder_enabled?: boolean | null
+          reminder_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          frequency?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          remaining?: number | null
+          reminder_enabled?: boolean | null
+          reminder_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           address: string | null
@@ -210,10 +252,12 @@ export type Database = {
           emergency_contact: string | null
           full_name: string
           gender: string | null
+          height: number | null
           id: string
           phone: string | null
           updated_at: string
           user_id: string
+          weight: number | null
         }
         Insert: {
           address?: string | null
@@ -224,10 +268,12 @@ export type Database = {
           emergency_contact?: string | null
           full_name: string
           gender?: string | null
+          height?: number | null
           id?: string
           phone?: string | null
           updated_at?: string
           user_id: string
+          weight?: number | null
         }
         Update: {
           address?: string | null
@@ -238,10 +284,12 @@ export type Database = {
           emergency_contact?: string | null
           full_name?: string
           gender?: string | null
+          height?: number | null
           id?: string
           phone?: string | null
           updated_at?: string
           user_id?: string
+          weight?: number | null
         }
         Relationships: []
       }
