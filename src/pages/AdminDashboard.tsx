@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, MapPin, LogOut, TrendingUp
+  Settings, MapPin, LogOut, TrendingUp, MessageSquare, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DoctorManager from "@/components/admin/DoctorManager";
@@ -12,6 +12,8 @@ import HospitalManager from "@/components/admin/HospitalManager";
 import DiagnosticManager from "@/components/admin/DiagnosticManager";
 import DoctorChamberManager from "@/components/admin/DoctorChamberManager";
 import ContentManager from "@/components/admin/ContentManager";
+import CommentsManager from "@/components/admin/CommentsManager";
+import FeaturedDoctorsManager from "@/components/admin/FeaturedDoctorsManager";
 import SettingsManager from "@/components/admin/SettingsManager";
 import ActivityFeed from "@/components/admin/ActivityFeed";
 import { useToast } from "@/hooks/use-toast";
@@ -21,9 +23,11 @@ const sidebarLinks = [
   { name: "Dashboard", icon: LayoutDashboard, tab: "overview" },
   { name: "Hospitals", icon: Building2, tab: "hospitals" },
   { name: "Doctors", icon: Stethoscope, tab: "doctors" },
+  { name: "Featured Doctors", icon: Star, tab: "featured" },
   { name: "Chambers", icon: MapPin, tab: "chambers" },
   { name: "Diagnostics", icon: Users, tab: "diagnostics" },
   { name: "Content", icon: FileText, tab: "content" },
+  { name: "Comments", icon: MessageSquare, tab: "comments" },
   { name: "Settings", icon: Settings, tab: "settings" },
 ];
 
@@ -353,6 +357,12 @@ export default function AdminDashboard() {
 
           {/* Content Tab */}
           {activeTab === "content" && <ContentManager />}
+
+          {/* Comments Tab */}
+          {activeTab === "comments" && <CommentsManager />}
+
+          {/* Featured Doctors Tab */}
+          {activeTab === "featured" && <FeaturedDoctorsManager />}
 
           {/* Settings Tab */}
           {activeTab === "settings" && <SettingsManager />}

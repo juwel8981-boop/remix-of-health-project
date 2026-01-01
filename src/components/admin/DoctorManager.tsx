@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Edit, CheckCircle2, XCircle, Clock,
-  Stethoscope, Eye, AlertCircle, Plus, Trash2, MapPin
+  Stethoscope, Eye, AlertCircle, Plus, Trash2, MapPin, Power, PowerOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -28,38 +28,29 @@ interface Doctor {
   verification_status: string;
   rejection_reason: string | null;
   created_at: string;
+  is_active: boolean;
   isMock?: boolean;
 }
 
 // Mock doctors data for admin management (130 doctors)
 const mockDoctors: Doctor[] = [
-  { id: "mock-1", user_id: "", full_name: "Dr. Fazle Rabbi Chowdhury", email: "fazle.rabbi@example.com", phone: "+880 1711-123456", specialization: "Cardiologist", registration_number: "BMDC-12345", experience_years: 22, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-2", user_id: "", full_name: "Dr. Mir Jamal Uddin", email: "mir.jamal@example.com", phone: "+880 1711-123457", specialization: "Cardiologist", registration_number: "BMDC-12346", experience_years: 18, hospital_affiliation: "United Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-3", user_id: "", full_name: "Dr. Sohel Mahmud", email: "sohel.mahmud@example.com", phone: "+880 1711-123458", specialization: "Cardiologist", registration_number: "BMDC-12347", experience_years: 15, hospital_affiliation: "Praava Health", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-4", user_id: "", full_name: "Dr. Quazi Deen Mohammad", email: "quazi.deen@example.com", phone: "+880 1711-123459", specialization: "Neurologist", registration_number: "BMDC-12348", experience_years: 25, hospital_affiliation: "National Institute of Neurosciences", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-5", user_id: "", full_name: "Dr. Mohammad Shah Kamal", email: "shah.kamal@example.com", phone: "+880 1711-123460", specialization: "Neurologist", registration_number: "BMDC-12349", experience_years: 16, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-6", user_id: "", full_name: "Dr. Syeda Afroza", email: "syeda.afroza@example.com", phone: "+880 1711-123461", specialization: "Pediatrician", registration_number: "BMDC-12350", experience_years: 20, hospital_affiliation: "Dhaka Shishu Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-7", user_id: "", full_name: "Dr. Md. Benzir Ahmed", email: "benzir.ahmed@example.com", phone: "+880 1711-123462", specialization: "Pediatrician", registration_number: "BMDC-12351", experience_years: 14, hospital_affiliation: "Apollo Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-8", user_id: "", full_name: "Dr. Nazmun Nahar", email: "nazmun.nahar@example.com", phone: "+880 1711-123463", specialization: "Dermatologist", registration_number: "BMDC-12352", experience_years: 12, hospital_affiliation: "Evercare Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-9", user_id: "", full_name: "Dr. Fatema Akhter", email: "fatema.akhter@example.com", phone: "+880 1711-123464", specialization: "Dermatologist", registration_number: "BMDC-12353", experience_years: 10, hospital_affiliation: "Labaid Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-10", user_id: "", full_name: "Dr. Rashida Begum", email: "rashida.begum@example.com", phone: "+880 1711-123465", specialization: "Gynecologist", registration_number: "BMDC-12354", experience_years: 18, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-11", user_id: "", full_name: "Dr. Shirin Akhtar", email: "shirin.akhtar@example.com", phone: "+880 1711-123466", specialization: "Gynecologist", registration_number: "BMDC-12355", experience_years: 15, hospital_affiliation: "United Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-12", user_id: "", full_name: "Dr. AKM Fazlul Haque", email: "fazlul.haque@example.com", phone: "+880 1711-123467", specialization: "Orthopedic", registration_number: "BMDC-12356", experience_years: 20, hospital_affiliation: "NITOR", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-13", user_id: "", full_name: "Dr. Md. Jahangir Alam", email: "jahangir.alam@example.com", phone: "+880 1711-123468", specialization: "Orthopedic", registration_number: "BMDC-12357", experience_years: 17, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-14", user_id: "", full_name: "Dr. Mohammad Tariqul Islam", email: "tariqul.islam@example.com", phone: "+880 1711-123469", specialization: "ENT Specialist", registration_number: "BMDC-12358", experience_years: 14, hospital_affiliation: "Praava Health", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-15", user_id: "", full_name: "Dr. Parveen Sultana", email: "parveen.sultana@example.com", phone: "+880 1711-123470", specialization: "ENT Specialist", registration_number: "BMDC-12359", experience_years: 11, hospital_affiliation: "United Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-16", user_id: "", full_name: "Dr. Muhammad Zafar Iqbal", email: "zafar.iqbal@example.com", phone: "+880 1711-123471", specialization: "Psychiatrist", registration_number: "BMDC-12360", experience_years: 22, hospital_affiliation: "National Mental Health Institute", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-17", user_id: "", full_name: "Dr. Sultana Razia", email: "sultana.razia@example.com", phone: "+880 1711-123472", specialization: "Psychiatrist", registration_number: "BMDC-12361", experience_years: 16, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-18", user_id: "", full_name: "Dr. Anwar Hossain", email: "anwar.hossain@example.com", phone: "+880 1711-123473", specialization: "General Physician", registration_number: "BMDC-12362", experience_years: 25, hospital_affiliation: "Dhaka Medical College", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-19", user_id: "", full_name: "Dr. Kamruzzaman", email: "kamruzzaman@example.com", phone: "+880 1711-123474", specialization: "General Physician", registration_number: "BMDC-12363", experience_years: 12, hospital_affiliation: "Apollo Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  { id: "mock-20", user_id: "", full_name: "Dr. Ferdous Ahmed", email: "ferdous.ahmed@example.com", phone: "+880 1711-123475", specialization: "Cardiologist", registration_number: "BMDC-12364", experience_years: 19, hospital_affiliation: "Evercare Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), isMock: true },
-  // Adding more mock doctors (21-130)
-  ...Array.from({ length: 110 }, (_, i) => {
+  { id: "mock-1", user_id: "", full_name: "Dr. Fazle Rabbi Chowdhury", email: "fazle.rabbi@example.com", phone: "+880 1711-123456", specialization: "Cardiologist", registration_number: "BMDC-12345", experience_years: 22, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-2", user_id: "", full_name: "Dr. Mir Jamal Uddin", email: "mir.jamal@example.com", phone: "+880 1711-123457", specialization: "Cardiologist", registration_number: "BMDC-12346", experience_years: 18, hospital_affiliation: "United Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-3", user_id: "", full_name: "Dr. Sohel Mahmud", email: "sohel.mahmud@example.com", phone: "+880 1711-123458", specialization: "Cardiologist", registration_number: "BMDC-12347", experience_years: 15, hospital_affiliation: "Praava Health", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-4", user_id: "", full_name: "Dr. Quazi Deen Mohammad", email: "quazi.deen@example.com", phone: "+880 1711-123459", specialization: "Neurologist", registration_number: "BMDC-12348", experience_years: 25, hospital_affiliation: "National Institute of Neurosciences", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-5", user_id: "", full_name: "Dr. Mohammad Shah Kamal", email: "shah.kamal@example.com", phone: "+880 1711-123460", specialization: "Neurologist", registration_number: "BMDC-12349", experience_years: 16, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-6", user_id: "", full_name: "Dr. Syeda Afroza", email: "syeda.afroza@example.com", phone: "+880 1711-123461", specialization: "Pediatrician", registration_number: "BMDC-12350", experience_years: 20, hospital_affiliation: "Dhaka Shishu Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-7", user_id: "", full_name: "Dr. Md. Benzir Ahmed", email: "benzir.ahmed@example.com", phone: "+880 1711-123462", specialization: "Pediatrician", registration_number: "BMDC-12351", experience_years: 14, hospital_affiliation: "Apollo Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-8", user_id: "", full_name: "Dr. Nazmun Nahar", email: "nazmun.nahar@example.com", phone: "+880 1711-123463", specialization: "Dermatologist", registration_number: "BMDC-12352", experience_years: 12, hospital_affiliation: "Evercare Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-9", user_id: "", full_name: "Dr. Fatema Akhter", email: "fatema.akhter@example.com", phone: "+880 1711-123464", specialization: "Dermatologist", registration_number: "BMDC-12353", experience_years: 10, hospital_affiliation: "Labaid Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  { id: "mock-10", user_id: "", full_name: "Dr. Rashida Begum", email: "rashida.begum@example.com", phone: "+880 1711-123465", specialization: "Gynecologist", registration_number: "BMDC-12354", experience_years: 18, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
+  // Adding more mock doctors (11-130)
+  ...Array.from({ length: 120 }, (_, i) => {
     const specialties = ["Cardiologist", "Neurologist", "Dermatologist", "Gynecologist", "Pediatrician", "Orthopedic", "ENT Specialist", "Psychiatrist", "General Physician", "Gastroenterologist", "Urologist", "Ophthalmologist", "Pulmonologist", "Nephrologist", "Oncologist"];
     const hospitals = ["Square Hospital", "United Hospital", "Apollo Hospital", "Evercare Hospital", "Labaid Hospital", "Popular Hospital", "Ibn Sina Hospital", "Praava Health", "Dhaka Medical College", "BIRDEM Hospital"];
     const firstNames = ["Dr. Md.", "Dr. Mohammad", "Dr. Abdul", "Dr. Syed", "Dr. Ahmed", "Dr. Fatima", "Dr. Ayesha", "Dr. Nusrat", "Dr. Rafiq", "Dr. Kamal"];
     const lastNames = ["Rahman", "Islam", "Hossain", "Khan", "Ahmed", "Akhter", "Begum", "Sultana", "Uddin", "Chowdhury"];
-    const idx = i + 21;
+    const idx = i + 11;
     return {
       id: `mock-${idx}`,
       user_id: "",
@@ -67,13 +58,14 @@ const mockDoctors: Doctor[] = [
       email: `doctor${idx}@example.com`,
       phone: `+880 17${Math.floor(10000000 + Math.random() * 90000000)}`,
       specialization: specialties[i % specialties.length],
-      registration_number: `BMDC-${12364 + idx}`,
+      registration_number: `BMDC-${12350 + idx}`,
       experience_years: 5 + (i % 25),
       hospital_affiliation: hospitals[i % hospitals.length],
       documents_url: null,
       verification_status: "approved",
       rejection_reason: null,
       created_at: new Date().toISOString(),
+      is_active: true,
       isMock: true,
     } as Doctor;
   }),
@@ -149,6 +141,8 @@ export default function DoctorManager() {
   const pendingCount = doctors.filter(d => d.verification_status === "pending").length;
   const approvedCount = doctors.filter(d => d.verification_status === "approved").length;
   const rejectedCount = doctors.filter(d => d.verification_status === "rejected").length;
+  const activeCount = doctors.filter(d => d.verification_status === "approved" && d.is_active).length;
+  const inactiveCount = doctors.filter(d => d.verification_status === "approved" && !d.is_active).length;
 
   const sendVerificationEmail = async (doctor: Doctor, status: "approved" | "rejected", reason?: string) => {
     try {
@@ -294,6 +288,33 @@ export default function DoctorManager() {
     }
     setShowDeleteDialog(false);
     setDoctorToDelete(null);
+  };
+
+  const handleToggleActive = async (doctor: Doctor) => {
+    if (doctor.isMock) {
+      // Toggle mock doctor locally
+      setDoctors(prev => prev.map(d => 
+        d.id === doctor.id ? { ...d, is_active: !d.is_active } : d
+      ));
+      toast.success(`${doctor.full_name} has been ${doctor.is_active ? 'deactivated' : 'activated'}`);
+      return;
+    }
+
+    setProcessingId(doctor.id);
+    const newStatus = !doctor.is_active;
+    const { error } = await supabase
+      .from("doctors")
+      .update({ is_active: newStatus })
+      .eq("id", doctor.id);
+
+    if (error) {
+      toast.error("Failed to update doctor status");
+      console.error(error);
+    } else {
+      toast.success(`${doctor.full_name} has been ${newStatus ? 'activated' : 'deactivated'}`);
+      fetchDoctors();
+    }
+    setProcessingId(null);
   };
 
   const openChamberDialog = (doctor: Doctor) => {
@@ -480,6 +501,7 @@ export default function DoctorManager() {
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Specialization</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Registration #</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Active</th>
                 <th className="text-right py-4 px-4 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
@@ -507,6 +529,32 @@ export default function DoctorManager() {
                       <p className="text-xs text-muted-foreground mt-1 max-w-[200px] truncate">
                         {doctor.rejection_reason}
                       </p>
+                    )}
+                  </td>
+                  <td className="py-4 px-4">
+                    {doctor.verification_status === "approved" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={doctor.is_active 
+                          ? "text-green-600 hover:text-green-700 hover:bg-green-100" 
+                          : "text-gray-500 hover:text-gray-600 hover:bg-gray-100"
+                        }
+                        onClick={() => handleToggleActive(doctor)}
+                        disabled={processingId === doctor.id}
+                      >
+                        {doctor.is_active ? (
+                          <>
+                            <Power className="w-4 h-4 mr-1" />
+                            Active
+                          </>
+                        ) : (
+                          <>
+                            <PowerOff className="w-4 h-4 mr-1" />
+                            Inactive
+                          </>
+                        )}
+                      </Button>
                     )}
                   </td>
                   <td className="py-4 px-4">
