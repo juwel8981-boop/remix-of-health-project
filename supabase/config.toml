@@ -1,7 +1,1 @@
-project_id = "cxlhubwiezxlmsjqoncl"
-
-[functions.send-verification-email]
-verify_jwt = false
-
-[functions.analyze-symptoms]
-verify_jwt = false
+project_id = "tnbvsyiuhrelhdxpoqru"
