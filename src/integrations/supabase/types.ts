@@ -50,6 +50,48 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_chambers: {
+        Row: {
+          address: string
+          appointment_fee: string | null
+          created_at: string
+          days: string[] | null
+          doctor_id: string
+          id: string
+          name: string
+          phone: string | null
+          serial_available: boolean | null
+          timing: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          appointment_fee?: string | null
+          created_at?: string
+          days?: string[] | null
+          doctor_id: string
+          id?: string
+          name: string
+          phone?: string | null
+          serial_available?: boolean | null
+          timing?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          appointment_fee?: string | null
+          created_at?: string
+          days?: string[] | null
+          doctor_id?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          serial_available?: boolean | null
+          timing?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       doctors: {
         Row: {
           created_at: string

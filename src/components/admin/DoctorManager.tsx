@@ -108,7 +108,10 @@ export default function DoctorManager() {
     phone: "",
     timing: "",
     appointment_fee: "",
+    days: [] as string[],
+    serial_available: true,
   });
+  const [savingChamber, setSavingChamber] = useState(false);
 
   useEffect(() => {
     fetchDoctors();
@@ -301,17 +304,45 @@ export default function DoctorManager() {
       phone: "",
       timing: "",
       appointment_fee: "",
+      days: [],
+      serial_available: true,
     });
     setShowChamberDialog(true);
   };
 
-  const handleAddChamber = () => {
-    // For now, show a toast - in production this would save to database
+  const handleAddChamber = async () => {
     if (!chamberForm.name || !chamberForm.address) {
       toast.error("Please fill chamber name and address");
       return;
     }
-    toast.success(`Chamber "${chamberForm.name}" added for ${selectedDoctorForChamber?.full_name}`);
+    
+    if (!selectedDoctorForChamber) {
+      toast.error("No doctor selected");
+      return;
+    }
+
+    setSavingChamber(true);
+    
+    const { error } = await supabase.from("doctor_chambers").insert({
+      doctor_id: selectedDoctorForChamber.id,
+      name: chamberForm.name,
+      address: chamberForm.address,
+      phone: chamberForm.phone || null,
+      timing: chamberForm.timing || null,
+      appointment_fee: chamberForm.appointment_fee || null,
+      days: chamberForm.days,
+      serial_available: chamberForm.serial_available,
+    });
+
+    setSavingChamber(false);
+
+    if (error) {
+      console.error("Error saving chamber:", error);
+      toast.error("Failed to save chamber. Please try again.");
+      return;
+    }
+
+    toast.success(`Chamber "${chamberForm.name}" added for ${selectedDoctorForChamber.full_name}`);
     setShowChamberDialog(false);
     setChamberForm({
       name: "",
@@ -319,6 +350,8 @@ export default function DoctorManager() {
       phone: "",
       timing: "",
       appointment_fee: "",
+      days: [],
+      serial_available: true,
     });
   };
 
@@ -799,7 +832,7 @@ export default function DoctorManager() {
 
       {/* Add Chamber Dialog */}
       <Dialog open={showChamberDialog} onOpenChange={setShowChamberDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Chamber for {selectedDoctorForChamber?.full_name}</DialogTitle>
           </DialogHeader>
@@ -847,12 +880,56 @@ export default function DoctorManager() {
                 placeholder="e.g., ৳1,500"
               />
             </div>
+            <div>
+              <Label>Available Days</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => (
+                  <Button
+                    key={day}
+                    type="button"
+                    variant={chamberForm.days.includes(day) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setChamberForm(prev => ({
+                        ...prev,
+                        days: prev.days.includes(day)
+                          ? prev.days.filter(d => d !== day)
+                          : [...prev.days, day]
+                      }));
+                    }}
+                  >
+                    {day.substring(0, 3)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="serialAvailable"
+                checked={chamberForm.serial_available}
+                onChange={(e) => setChamberForm(prev => ({ ...prev, serial_available: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="serialAvailable" className="cursor-pointer">
+                Serial Available
+              </Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowChamberDialog(false)}>Cancel</Button>
-            <Button variant="healthcare" onClick={handleAddChamber}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Chamber
+            <Button variant="healthcare" onClick={handleAddChamber} disabled={savingChamber}>
+              {savingChamber ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Chamber
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
