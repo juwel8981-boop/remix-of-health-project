@@ -98,9 +98,12 @@ export type Database = {
           documents_url: string | null
           email: string
           experience_years: number | null
+          featured_rank: number | null
           full_name: string
           hospital_affiliation: string | null
           id: string
+          is_active: boolean
+          is_featured: boolean
           phone: string | null
           registration_number: string
           rejection_reason: string | null
@@ -114,9 +117,12 @@ export type Database = {
           documents_url?: string | null
           email: string
           experience_years?: number | null
+          featured_rank?: number | null
           full_name: string
           hospital_affiliation?: string | null
           id?: string
+          is_active?: boolean
+          is_featured?: boolean
           phone?: string | null
           registration_number: string
           rejection_reason?: string | null
@@ -130,9 +136,12 @@ export type Database = {
           documents_url?: string | null
           email?: string
           experience_years?: number | null
+          featured_rank?: number | null
           full_name?: string
           hospital_affiliation?: string | null
           id?: string
+          is_active?: boolean
+          is_featured?: boolean
           phone?: string | null
           registration_number?: string
           rejection_reason?: string | null
