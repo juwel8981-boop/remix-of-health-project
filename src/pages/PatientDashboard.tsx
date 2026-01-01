@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Download, Plus, ChevronRight, Brain
+  Heart, TrendingUp, Download, Plus, ChevronRight, Brain, Droplet, Ruler, Scale
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { MedicalRecordsUpload } from "@/components/MedicalRecordsUpload";
+import { supabase } from "@/integrations/supabase/client";
 const sidebarLinks = [
   { name: "Overview", icon: Activity, href: "/patient" },
   { name: "My Profile", icon: User, href: "/patient/profile" },
@@ -67,16 +68,53 @@ const medications = [
   { name: "Vitamin D", dosage: "1000IU", frequency: "Once daily", remaining: 25 },
 ];
 
-const healthStats = [
-  { label: "Blood Pressure", value: "120/80", unit: "mmHg", status: "normal", icon: Activity },
-  { label: "Heart Rate", value: "72", unit: "bpm", status: "normal", icon: Heart },
-  { label: "Blood Sugar", value: "95", unit: "mg/dL", status: "normal", icon: TrendingUp },
-  { label: "Weight", value: "68", unit: "kg", status: "stable", icon: User },
-];
-
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [patientData, setPatientData] = useState<{
+    full_name: string;
+    blood_group: string | null;
+    date_of_birth: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchPatientData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('patients')
+          .select('full_name, blood_group, date_of_birth')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (data) {
+          setPatientData(data);
+        }
+      }
+    };
+    fetchPatientData();
+  }, []);
+
+  // Calculate age from date of birth
+  const calculateAge = (dob: string | null): string => {
+    if (!dob) return "--";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age.toString();
+  };
+
+  const firstName = patientData?.full_name?.split(' ')[0] || 'User';
+
+  const healthStats = [
+    { label: "Age", value: calculateAge(patientData?.date_of_birth ?? null), unit: "years", status: "stable", icon: User },
+    { label: "Blood Group", value: patientData?.blood_group || "--", unit: "", status: "stable", icon: Droplet },
+    { label: "Weight", value: "68", unit: "kg", status: "stable", icon: Scale },
+    { label: "Height", value: "170", unit: "cm", status: "stable", icon: Ruler },
+  ];
 
   return (
     <div className="min-h-screen bg-muted">
@@ -91,7 +129,7 @@ export default function PatientDashboard() {
                 className="w-12 h-12 rounded-full object-cover"
               />
               <div>
-                <p className="font-semibold text-foreground">Rahim Uddin</p>
+                <p className="font-semibold text-foreground">{patientData?.full_name || 'Patient'}</p>
                 <p className="text-sm text-muted-foreground">Patient</p>
               </div>
             </div>
@@ -123,7 +161,7 @@ export default function PatientDashboard() {
               animate={{ opacity: 1, y: 0 }}
             >
               <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-                Welcome back, Rahim!
+                Welcome back, {firstName}!
               </h1>
               <p className="text-muted-foreground">
                 Here's an overview of your health and upcoming activities.
