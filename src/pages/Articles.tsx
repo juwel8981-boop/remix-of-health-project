@@ -1,9 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   Heart, MessageCircle, Share2, Send, Image, X, MoreHorizontal,
-  ThumbsUp, Smile, Camera, Video, MapPin, Users, Globe, ChevronDown
+  ThumbsUp, Smile, Camera, Video, MapPin, Users, Globe, ChevronDown, LogIn
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -192,12 +196,47 @@ export default function Articles() {
   const [replyTo, setReplyTo] = useState<{ postId: number; commentId: number } | null>(null);
   const [replyText, setReplyText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const isAuthenticated = !!session;
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const requireAuth = (action: string) => {
+    if (!isAuthenticated) {
+      toast.error(`Please login to ${action}`, {
+        action: {
+          label: "Login",
+          onClick: () => navigate("/login"),
+        },
+      });
+      return false;
+    }
+    return true;
+  };
 
   const filteredPosts = posts.filter((post) => {
     return selectedCategory === "All" || post.category === selectedCategory;
   });
 
   const handleCreatePost = () => {
+    if (!requireAuth("create posts")) return;
     if (!newPostContent.trim() && newPostImages.length === 0) return;
 
     const newPost: Post = {
@@ -235,6 +274,7 @@ export default function Articles() {
   };
 
   const toggleLike = (postId: number) => {
+    if (!requireAuth("like posts")) return;
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return {
@@ -248,6 +288,7 @@ export default function Articles() {
   };
 
   const toggleCommentLike = (postId: number, commentId: number) => {
+    if (!requireAuth("like comments")) return;
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return {
@@ -269,6 +310,7 @@ export default function Articles() {
   };
 
   const addComment = (postId: number) => {
+    if (!requireAuth("comment on posts")) return;
     const text = commentText[postId];
     if (!text?.trim()) return;
 
@@ -297,6 +339,7 @@ export default function Articles() {
   };
 
   const addReply = (postId: number, commentId: number) => {
+    if (!requireAuth("reply to comments")) return;
     if (!replyText.trim()) return;
 
     const newReply: Reply = {
@@ -332,6 +375,7 @@ export default function Articles() {
   };
 
   const sharePost = (postId: number) => {
+    if (!requireAuth("share posts")) return;
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return { ...post, shares: post.shares + 1 };
@@ -386,85 +430,103 @@ export default function Articles() {
       <div className="healthcare-container py-6">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Create Post Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-xl shadow-sm border border-border p-4"
-          >
-            <div className="flex gap-3">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={currentUser.image} />
-                <AvatarFallback>You</AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <Textarea
-                  placeholder="Share a health tip, ask a question, or start a discussion..."
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
-                />
-                
-                {/* Image Preview */}
-                {newPostImages.length > 0 && (
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    {newPostImages.map((img, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={img}
-                          alt="Upload preview"
-                          className="w-24 h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {isAuthenticated ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card rounded-xl shadow-sm border border-border p-4"
+            >
+              <div className="flex gap-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={currentUser.image} />
+                  <AvatarFallback>You</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Textarea
+                    placeholder="Share a health tip, ask a question, or start a discussion..."
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
+                  />
+                  
+                  {/* Image Preview */}
+                  {newPostImages.length > 0 && (
+                    <div className="flex gap-2 mt-3 flex-wrap">
+                      {newPostImages.map((img, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={img}
+                            alt="Upload preview"
+                            className="w-24 h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                  <div className="flex items-center gap-1">
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary"
+                        onClick={handleImageUpload}
+                      >
+                        <Image className="w-5 h-5 mr-1" />
+                        Photo
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        <Video className="w-5 h-5 mr-1" />
+                        Video
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-primary hidden sm:flex"
+                      >
+                        <Smile className="w-5 h-5 mr-1" />
+                        Feeling
+                      </Button>
+                    </div>
                     <Button
-                      variant="ghost"
+                      onClick={handleCreatePost}
+                      disabled={!newPostContent.trim() && newPostImages.length === 0}
                       size="sm"
-                      className="text-muted-foreground hover:text-primary"
-                      onClick={handleImageUpload}
                     >
-                      <Image className="w-5 h-5 mr-1" />
-                      Photo
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-primary"
-                    >
-                      <Video className="w-5 h-5 mr-1" />
-                      Video
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-primary hidden sm:flex"
-                    >
-                      <Smile className="w-5 h-5 mr-1" />
-                      Feeling
+                      Post
                     </Button>
                   </div>
-                  <Button
-                    onClick={handleCreatePost}
-                    disabled={!newPostContent.trim() && newPostImages.length === 0}
-                    size="sm"
-                  >
-                    Post
-                  </Button>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card rounded-xl shadow-sm border border-border p-6 text-center"
+            >
+              <LogIn className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold text-foreground mb-1">Join the conversation</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Login to like, comment, and share health tips with the community
+              </p>
+              <Button onClick={() => navigate("/login")}>
+                <LogIn className="w-4 h-4 mr-2" />
+                Login to Participate
+              </Button>
+            </motion.div>
+          )}
 
           {/* Posts Feed */}
           <AnimatePresence>
