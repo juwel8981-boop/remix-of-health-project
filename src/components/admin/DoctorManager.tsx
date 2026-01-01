@@ -321,6 +321,12 @@ export default function DoctorManager() {
       return;
     }
 
+    // Check if it's a mock doctor - mock doctors cannot have chambers saved to DB
+    if (selectedDoctorForChamber.isMock) {
+      toast.error("Cannot add chambers to demo doctors. Please add a real doctor first.");
+      return;
+    }
+
     setSavingChamber(true);
     
     const { error } = await supabase.from("doctor_chambers").insert({
@@ -564,8 +570,10 @@ export default function DoctorManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-primary border-primary hover:bg-primary hover:text-white"
+                        className="text-primary border-primary hover:bg-primary hover:text-white disabled:opacity-50"
                         onClick={() => openChamberDialog(doctor)}
+                        disabled={doctor.isMock}
+                        title={doctor.isMock ? "Cannot add chambers to demo doctors" : "Add chamber location"}
                       >
                         <Plus className="w-4 h-4 mr-1" />
                         Add Chamber
