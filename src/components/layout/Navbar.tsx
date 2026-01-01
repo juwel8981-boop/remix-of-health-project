@@ -17,19 +17,15 @@ const navLinks = [
   { name: "Health Articles", href: "/articles" },
 ];
 
-const dashboardLinks = [
-  { name: "Patient Dashboard", href: "/patient", icon: User },
-  { name: "Doctor Dashboard", href: "/doctor", icon: Stethoscope },
-  { name: "Admin Panel", href: "/admin", icon: Shield },
-];
+type UserRole = "patient" | "doctor" | "admin" | null;
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [showDashboards, setShowDashboards] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,9 +35,11 @@ export function Navbar() {
         setUser(session?.user ?? null);
         if (session?.user) {
           fetchUserProfile(session.user.id);
+          fetchUserRole(session.user.id);
         } else {
           setAvatarUrl(null);
           setUserName(null);
+          setUserRole(null);
         }
       }
     );
@@ -50,6 +48,7 @@ export function Navbar() {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserProfile(session.user.id);
+        fetchUserRole(session.user.id);
       }
     });
 
@@ -66,6 +65,60 @@ export function Navbar() {
     if (profile) {
       setAvatarUrl(profile.avatar_url);
       setUserName(profile.full_name);
+    }
+  };
+
+  const fetchUserRole = async (userId: string) => {
+    // Check if user is admin
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    
+    if (adminRole) {
+      setUserRole("admin");
+      return;
+    }
+
+    // Check if user is a doctor
+    const { data: doctorData } = await supabase
+      .from("doctors")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    
+    if (doctorData) {
+      setUserRole("doctor");
+      return;
+    }
+
+    // Check if user is a patient
+    const { data: patientData } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    
+    if (patientData) {
+      setUserRole("patient");
+      return;
+    }
+
+    setUserRole(null);
+  };
+
+  const getDashboardLink = () => {
+    switch (userRole) {
+      case "admin":
+        return { name: "Admin Panel", href: "/admin", icon: Shield };
+      case "doctor":
+        return { name: "Doctor Dashboard", href: "/doctor", icon: Stethoscope };
+      case "patient":
+        return { name: "Patient Dashboard", href: "/patient", icon: User };
+      default:
+        return null;
     }
   };
 
@@ -120,39 +173,24 @@ export function Navbar() {
               </Link>
             ))}
 
-            {/* Dashboard Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowDashboards(!showDashboards)}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                Dashboards
-                <ChevronDown className={cn("w-4 h-4 transition-transform", showDashboards && "rotate-180")} />
-              </button>
-
-              <AnimatePresence>
-                {showDashboards && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full right-0 mt-2 w-56 bg-card rounded-xl border border-border shadow-healthcare-lg overflow-hidden"
-                  >
-                    {dashboardLinks.map((link) => (
-                      <Link
-                        key={link.name}
-                        to={link.href}
-                        onClick={() => setShowDashboards(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <link.icon className="w-4 h-4" />
-                        {link.name}
-                      </Link>
-                    ))}
-                  </motion.div>
+            {/* Dashboard Link - Only show when logged in and has role */}
+            {user && userRole && getDashboardLink() && (
+              <Link
+                to={getDashboardLink()!.href}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isActive(getDashboardLink()!.href)
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
-              </AnimatePresence>
-            </div>
+              >
+                {(() => {
+                  const link = getDashboardLink()!;
+                  return <link.icon className="w-4 h-4" />;
+                })()}
+                {getDashboardLink()!.name}
+              </Link>
+            )}
           </div>
 
           {/* CTA Buttons - Always visible on desktop */}
@@ -250,22 +288,27 @@ export function Navbar() {
                   </Link>
                 ))}
 
-                <div className="pt-2 border-t border-border">
-                  <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Dashboards
-                  </p>
-                  {dashboardLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <link.icon className="w-4 h-4" />
-                      {link.name}
-                    </Link>
-                  ))}
-                </div>
+                {/* Dashboard Link - Only show when logged in and has role */}
+                {user && userRole && getDashboardLink() && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Dashboard
+                    </p>
+                    {(() => {
+                      const link = getDashboardLink()!;
+                      return (
+                        <Link
+                          to={link.href}
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <link.icon className="w-4 h-4" />
+                          {link.name}
+                        </Link>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div className="pt-4 space-y-2">
                   {user ? (
