@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Download, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2
+  Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { MedicalRecordsUpload } from "@/components/MedicalRecordsUpload";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -23,50 +23,7 @@ const sidebarLinks = [
   { name: "Reminders", icon: Bell, href: "/patient/reminders" },
 ];
 
-const upcomingAppointments = [
-  {
-    id: 1,
-    doctor: "Dr. Sarah Ahmed",
-    specialty: "Cardiologist",
-    date: "Jan 20, 2024",
-    time: "10:00 AM",
-    type: "In-Person",
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face",
-  },
-  {
-    id: 2,
-    doctor: "Dr. Mohammad Rahman",
-    specialty: "Neurologist",
-    date: "Jan 25, 2024",
-    time: "2:30 PM",
-    type: "Online",
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face",
-  },
-];
-
-const recentRecords = [
-  {
-    id: 1,
-    name: "Blood Test Report",
-    date: "Jan 15, 2024",
-    doctor: "Dr. Kamal Hossain",
-    type: "Lab Report",
-  },
-  {
-    id: 2,
-    name: "ECG Report",
-    date: "Jan 10, 2024",
-    doctor: "Dr. Sarah Ahmed",
-    type: "Diagnostic",
-  },
-  {
-    id: 3,
-    name: "Prescription",
-    date: "Jan 08, 2024",
-    doctor: "Dr. Fatima Khan",
-    type: "Prescription",
-  },
-];
+// Appointments and records will be loaded from database when implemented
 
 interface Medication {
   id: string;
@@ -412,40 +369,14 @@ export default function PatientDashboard() {
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {upcomingAppointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-muted"
-                  >
-                    <img
-                      src={appointment.image}
-                      alt={appointment.doctor}
-                      className="w-14 h-14 rounded-xl object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{appointment.doctor}</h3>
-                      <p className="text-sm text-muted-foreground">{appointment.specialty}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-foreground">{appointment.date}</p>
-                      <p className="text-sm text-muted-foreground">{appointment.time}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      appointment.type === "Online" 
-                        ? "bg-primary/10 text-primary" 
-                        : "bg-accent/10 text-accent"
-                    }`}>
-                      {appointment.type}
-                    </span>
-                  </div>
-                ))}
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No upcoming appointments</p>
+                <Button variant="healthcare-outline" className="mt-4">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Book New Appointment
+                </Button>
               </div>
-
-              <Button variant="healthcare-outline" className="w-full mt-4">
-                <Plus className="w-4 h-4 mr-2" />
-                Book New Appointment
-              </Button>
             </motion.div>
 
             {/* Medications */}
@@ -536,42 +467,13 @@ export default function PatientDashboard() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Document</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Type</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Doctor</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentRecords.map((record) => (
-                    <tr key={record.id} className="border-b border-border last:border-0">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-primary" />
-                          </div>
-                          <span className="font-medium text-foreground">{record.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="healthcare-badge text-xs">{record.type}</span>
-                      </td>
-                      <td className="py-4 px-4 text-muted-foreground">{record.doctor}</td>
-                      <td className="py-4 px-4 text-muted-foreground">{record.date}</td>
-                      <td className="py-4 px-4 text-right">
-                        <Button variant="ghost" size="sm">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No medical records uploaded yet</p>
+              <Button variant="outline" className="mt-4" onClick={() => setShowUploadModal(true)}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Your First Record
+              </Button>
             </div>
           </motion.div>
 
@@ -610,6 +512,9 @@ export default function PatientDashboard() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingMedication ? 'Edit Medication' : 'Add New Medication'}</DialogTitle>
+            <DialogDescription>
+              {editingMedication ? 'Update your medication details below.' : 'Add a new medication to track your prescriptions.'}
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
