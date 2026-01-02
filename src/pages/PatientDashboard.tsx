@@ -16,11 +16,11 @@ import { toast } from "@/hooks/use-toast";
 
 const sidebarLinks = [
   { name: "Overview", icon: Activity, href: "/patient" },
-  { name: "My Profile", icon: User, href: "/patient/profile" },
-  { name: "Medical Records", icon: FileText, href: "/patient/records" },
-  { name: "Appointments", icon: Calendar, href: "/patient/appointments" },
-  { name: "Health Tracker", icon: Heart, href: "/patient/health" },
-  { name: "Reminders", icon: Bell, href: "/patient/reminders" },
+  { name: "My Profile", icon: User, href: "/settings" },
+  { name: "Medical Records", icon: FileText, href: "/patient" },
+  { name: "Appointments", icon: Calendar, href: "/patient" },
+  { name: "Health Tracker", icon: Heart, href: "/patient" },
+  { name: "Reminders", icon: Bell, href: "/patient" },
 ];
 
 // Appointments and records will be loaded from database when implemented
