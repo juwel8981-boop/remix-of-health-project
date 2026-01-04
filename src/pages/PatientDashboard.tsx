@@ -89,14 +89,18 @@ export default function PatientDashboard() {
           setPatientData(data);
         }
 
-        // Fetch avatar
+        // Fetch avatar - add timestamp to ensure fresh image
         const { data: profile } = await supabase
           .from('profiles')
           .select('avatar_url')
           .eq('id', user.id)
           .maybeSingle();
         if (profile?.avatar_url) {
-          setAvatarUrl(profile.avatar_url);
+          // Ensure cache-busting by checking if timestamp exists
+          const url = profile.avatar_url.includes('?') 
+            ? profile.avatar_url 
+            : `${profile.avatar_url}?t=${Date.now()}`;
+          setAvatarUrl(url);
         }
 
         // Fetch EHR count

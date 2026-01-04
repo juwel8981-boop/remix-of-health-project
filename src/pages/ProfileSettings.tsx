@@ -149,20 +149,28 @@ export default function ProfileSettings() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
+      // Get public URL with cache-busting timestamp
+      const timestamp = Date.now();
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
-      // Update profiles table
+      const avatarUrlWithTimestamp = `${publicUrl}?t=${timestamp}`;
+
+      // Upsert profiles table (insert if not exists, update if exists)
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", userId);
+        .upsert({ 
+          id: userId, 
+          avatar_url: avatarUrlWithTimestamp,
+          updated_at: new Date().toISOString()
+        }, { 
+          onConflict: 'id' 
+        });
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl + "?t=" + Date.now()); // Add timestamp to bust cache
+      setAvatarUrl(avatarUrlWithTimestamp);
       toast.success("Profile photo updated successfully");
     } catch (error) {
       console.error("Avatar upload error:", error);
