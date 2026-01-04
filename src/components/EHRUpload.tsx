@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, FileText, Image, File, Check, AlertCircle } from "lucide-react";
+import { X, Upload, FileText, Image, File, Check, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-interface MedicalRecordsUploadProps {
+interface EHRUploadProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess: () => void;
+  currentStorageUsed: number;
+  maxStorage: number;
 }
 
 const recordTypes = [
@@ -16,7 +21,10 @@ const recordTypes = [
   { id: "other", name: "Other", icon: File },
 ];
 
-export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadProps) {
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+const MAX_STORAGE = 100 * 1024 * 1024; // 100MB total
+
+export function EHRUpload({ isOpen, onClose, onSuccess, currentStorageUsed, maxStorage }: EHRUploadProps) {
   const [selectedType, setSelectedType] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [doctorName, setDoctorName] = useState("");
@@ -25,9 +33,27 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
+  const remainingStorage = maxStorage - currentStorageUsed;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      
+      // Check individual file sizes
+      const oversizedFiles = newFiles.filter(f => f.size > MAX_FILE_SIZE);
+      if (oversizedFiles.length > 0) {
+        toast.error(`Some files exceed the 10MB limit: ${oversizedFiles.map(f => f.name).join(", ")}`);
+        return;
+      }
+
+      // Check total size against remaining storage
+      const totalNewSize = newFiles.reduce((acc, f) => acc + f.size, 0);
+      if (totalNewSize > remainingStorage) {
+        toast.error("Not enough storage space. Please delete some files first.");
+        return;
+      }
+
+      setFiles(newFiles);
     }
   };
 
@@ -36,27 +62,74 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
     if (!selectedType || files.length === 0) return;
 
     setIsUploading(true);
-    
-    // Simulate upload
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsUploading(false);
-    setUploadSuccess(true);
 
-    // Reset after 2 seconds
-    setTimeout(() => {
-      setUploadSuccess(false);
-      setSelectedType("");
-      setFiles([]);
-      setDoctorName("");
-      setRecordDate("");
-      setNotes("");
-      onClose();
-    }, 2000);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in to upload files");
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        // Upload file to storage
+        const { error: uploadError } = await supabase.storage
+          .from("ehr-records")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // Create record in database
+        const { error: dbError } = await supabase.from("ehr_records").insert({
+          user_id: user.id,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          file_type: file.type || "application/octet-stream",
+          record_type: selectedType,
+          doctor_name: doctorName || null,
+          record_date: recordDate || null,
+          notes: notes || null,
+        });
+
+        if (dbError) throw dbError;
+      }
+
+      setUploadSuccess(true);
+      toast.success("EHR records uploaded successfully!");
+
+      setTimeout(() => {
+        setUploadSuccess(false);
+        setSelectedType("");
+        setFiles([]);
+        setDoctorName("");
+        setRecordDate("");
+        setNotes("");
+        onSuccess();
+        onClose();
+      }, 2000);
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload files. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   if (!isOpen) return null;
@@ -64,7 +137,6 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -73,17 +145,15 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         />
 
-        {/* Modal */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="relative w-full max-w-lg bg-card rounded-2xl shadow-healthcare-lg overflow-hidden max-h-[90vh] overflow-y-auto"
         >
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h2 className="font-display text-xl font-semibold text-foreground">
-              Upload Medical Record
+              Upload EHR Record
             </h2>
             <button
               onClick={onClose}
@@ -93,7 +163,6 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
             </button>
           </div>
 
-          {/* Content */}
           {uploadSuccess ? (
             <div className="p-12 text-center">
               <motion.div
@@ -104,10 +173,31 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
                 <Check className="w-10 h-10 text-healthcare-green" />
               </motion.div>
               <h3 className="text-xl font-semibold text-foreground mb-2">Upload Successful!</h3>
-              <p className="text-muted-foreground">Your medical record has been saved securely.</p>
+              <p className="text-muted-foreground">Your EHR record has been saved securely.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Storage Usage */}
+              <div className="p-4 rounded-xl bg-muted">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Storage Used</span>
+                  <span className="font-medium text-foreground">
+                    {formatBytes(currentStorageUsed)} / {formatBytes(maxStorage)}
+                  </span>
+                </div>
+                <div className="h-2 bg-border rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all ${
+                      currentStorageUsed / maxStorage > 0.9 ? "bg-destructive" : "bg-primary"
+                    }`}
+                    style={{ width: `${Math.min((currentStorageUsed / maxStorage) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formatBytes(remainingStorage)} remaining
+                </p>
+              </div>
+
               {/* Record Type */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-3">
@@ -146,16 +236,15 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
                     accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     onChange={handleFileChange}
                     className="hidden"
-                    id="file-upload"
+                    id="ehr-file-upload"
                   />
-                  <label htmlFor="file-upload" className="cursor-pointer">
+                  <label htmlFor="ehr-file-upload" className="cursor-pointer">
                     <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                     <p className="text-foreground font-medium mb-1">Click to upload files</p>
                     <p className="text-sm text-muted-foreground">PDF, JPG, PNG, DOC (max 10MB each)</p>
                   </label>
                 </div>
 
-                {/* File List */}
                 {files.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {files.map((file, index) => (
@@ -164,7 +253,7 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
                           <FileText className="w-4 h-4 text-primary" />
                           <span className="text-sm text-foreground truncate max-w-[200px]">{file.name}</span>
                           <span className="text-xs text-muted-foreground">
-                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            ({formatBytes(file.size)})
                           </span>
                         </div>
                         <button
@@ -225,7 +314,7 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
               <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5">
                 <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-muted-foreground">
-                  Your medical records are encrypted and stored securely. Only you can access them unless you choose to share with a doctor.
+                  Your EHR records are encrypted and stored securely. Only you can access them unless you choose to share with a doctor.
                 </p>
               </div>
 
@@ -238,11 +327,11 @@ export function MedicalRecordsUpload({ isOpen, onClose }: MedicalRecordsUploadPr
                   type="submit" 
                   variant="healthcare" 
                   className="flex-1"
-                  disabled={!selectedType || files.length === 0 || isUploading}
+                  disabled={!selectedType || files.length === 0 || isUploading || remainingStorage <= 0}
                 >
                   {isUploading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       Uploading...
                     </>
                   ) : (

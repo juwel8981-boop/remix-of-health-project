@@ -1,29 +1,28 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
   Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { MedicalRecordsUpload } from "@/components/MedicalRecordsUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const sidebarLinks = [
   { name: "Overview", icon: Activity, href: "/patient" },
   { name: "My Profile", icon: User, href: "/settings" },
-  { name: "Medical Records", icon: FileText, href: "/patient" },
-  { name: "Appointments", icon: Calendar, href: "/patient" },
+  { name: "EHR Records", icon: FileText, href: "/patient/ehr" },
+  { name: "Appointments", icon: Calendar, href: "/patient/appointments" },
   { name: "Health Tracker", icon: Heart, href: "/patient" },
   { name: "Reminders", icon: Bell, href: "/patient" },
 ];
-
-// Appointments and records will be loaded from database when implemented
 
 interface Medication {
   id: string;
@@ -57,8 +56,8 @@ const defaultMedicationForm: MedicationFormData = {
 };
 
 export default function PatientDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [patientData, setPatientData] = useState<{
     full_name: string;
     blood_group: string | null;
@@ -66,17 +65,21 @@ export default function PatientDashboard() {
     weight: number | null;
     height: number | null;
   } | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   const [medications, setMedications] = useState<Medication[]>([]);
   const [showMedicationDialog, setShowMedicationDialog] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [medicationForm, setMedicationForm] = useState<MedicationFormData>(defaultMedicationForm);
   const [savingMedication, setSavingMedication] = useState(false);
+  const [ehrCount, setEhrCount] = useState(0);
+  const [appointmentCount, setAppointmentCount] = useState(0);
 
   useEffect(() => {
     const fetchPatientData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Fetch patient data
         const { data } = await supabase
           .from('patients')
           .select('full_name, blood_group, date_of_birth, weight, height')
@@ -85,6 +88,31 @@ export default function PatientDashboard() {
         if (data) {
           setPatientData(data);
         }
+
+        // Fetch avatar
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile?.avatar_url) {
+          setAvatarUrl(profile.avatar_url);
+        }
+
+        // Fetch EHR count
+        const { count: ehrCountData } = await supabase
+          .from('ehr_records')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        setEhrCount(ehrCountData || 0);
+
+        // Fetch upcoming appointments count
+        const { count: apptCount } = await supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('patient_id', user.id)
+          .gte('appointment_date', new Date().toISOString().split('T')[0]);
+        setAppointmentCount(apptCount || 0);
       }
     };
     fetchPatientData();
@@ -269,11 +297,12 @@ export default function PatientDashboard() {
         <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border min-h-screen sticky top-16 md:top-20">
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-3">
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"
-                alt="Patient"
-                className="w-12 h-12 rounded-full object-cover"
-              />
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={avatarUrl || undefined} alt="Patient" />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {patientData?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'P'}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <p className="font-semibold text-foreground">{patientData?.full_name || 'Patient'}</p>
                 <p className="text-sm text-muted-foreground">Patient</p>
@@ -369,14 +398,28 @@ export default function PatientDashboard() {
                 </Button>
               </div>
 
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No upcoming appointments</p>
-                <Button variant="healthcare-outline" className="mt-4">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Book New Appointment
-                </Button>
-              </div>
+              {appointmentCount > 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-primary" />
+                  <p className="text-foreground font-medium">{appointmentCount} upcoming appointment{appointmentCount !== 1 ? 's' : ''}</p>
+                  <Button variant="outline" className="mt-4" asChild>
+                    <Link to="/patient/appointments">View Appointments</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No upcoming appointments</p>
+                  <Button 
+                    variant="healthcare-outline" 
+                    className="mt-4"
+                    onClick={() => navigate('/patient/book-appointment')}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Book New Appointment
+                  </Button>
+                </div>
+              )}
             </motion.div>
 
             {/* Medications */}
@@ -443,7 +486,7 @@ export default function PatientDashboard() {
             </motion.div>
           </div>
 
-          {/* Medical Records */}
+          {/* EHR Records */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -452,29 +495,43 @@ export default function PatientDashboard() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-lg font-semibold text-foreground">
-                Recent Medical Records
+                Electronic Health Records (EHR)
               </h2>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowUploadModal(true)}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/patient/ehr">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
+                  </Link>
                 </Button>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/patient/records">
+                  <Link to="/patient/ehr">
                     View All <ChevronRight className="w-4 h-4 ml-1" />
                   </Link>
                 </Button>
               </div>
             </div>
 
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No medical records uploaded yet</p>
-              <Button variant="outline" className="mt-4" onClick={() => setShowUploadModal(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Your First Record
-              </Button>
-            </div>
+            {ehrCount > 0 ? (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 mx-auto mb-3 text-primary" />
+                <p className="text-foreground font-medium">{ehrCount} record{ehrCount !== 1 ? 's' : ''} stored</p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link to="/patient/ehr">View All Records</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No EHR records uploaded yet</p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link to="/patient/ehr">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Your First Record
+                  </Link>
+                </Button>
+              </div>
+            )}
           </motion.div>
 
           {/* AI Doctor Finder */}
@@ -503,9 +560,6 @@ export default function PatientDashboard() {
           </motion.div>
         </main>
       </div>
-
-      {/* Upload Modal */}
-      <MedicalRecordsUpload isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} />
 
       {/* Medication Dialog */}
       <Dialog open={showMedicationDialog} onOpenChange={setShowMedicationDialog}>

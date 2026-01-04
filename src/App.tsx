@@ -13,6 +13,9 @@ import VerifyDoctor from "./pages/VerifyDoctor";
 import Articles from "./pages/Articles";
 import ArticleDetail from "./pages/ArticleDetail";
 import PatientDashboard from "./pages/PatientDashboard";
+import PatientEHR from "./pages/PatientEHR";
+import BookAppointment from "./pages/BookAppointment";
+import PatientAppointments from "./pages/PatientAppointments";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AIDoctorFinder from "./pages/AIDoctorFinder";
@@ -46,6 +49,9 @@ const App = () => (
             <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
             {/* Protected Dashboard Routes with Role-Based Access */}
             <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
+            <Route path="/patient/ehr" element={<ProtectedRoute requiredRole="patient"><PatientEHR /></ProtectedRoute>} />
+            <Route path="/patient/book-appointment" element={<ProtectedRoute requiredRole="patient"><BookAppointment /></ProtectedRoute>} />
+            <Route path="/patient/appointments" element={<ProtectedRoute requiredRole="patient"><PatientAppointments /></ProtectedRoute>} />
             <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             {/* Profile Settings - Protected but no specific role required */}
