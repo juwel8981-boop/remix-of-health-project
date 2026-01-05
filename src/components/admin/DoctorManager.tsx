@@ -29,47 +29,7 @@ interface Doctor {
   rejection_reason: string | null;
   created_at: string;
   is_active: boolean;
-  isMock?: boolean;
 }
-
-// Mock doctors data for admin management (130 doctors)
-const mockDoctors: Doctor[] = [
-  { id: "mock-1", user_id: "", full_name: "Dr. Fazle Rabbi Chowdhury", email: "fazle.rabbi@example.com", phone: "+880 1711-123456", specialization: "Cardiologist", registration_number: "BMDC-12345", experience_years: 22, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-2", user_id: "", full_name: "Dr. Mir Jamal Uddin", email: "mir.jamal@example.com", phone: "+880 1711-123457", specialization: "Cardiologist", registration_number: "BMDC-12346", experience_years: 18, hospital_affiliation: "United Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-3", user_id: "", full_name: "Dr. Sohel Mahmud", email: "sohel.mahmud@example.com", phone: "+880 1711-123458", specialization: "Cardiologist", registration_number: "BMDC-12347", experience_years: 15, hospital_affiliation: "Praava Health", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-4", user_id: "", full_name: "Dr. Quazi Deen Mohammad", email: "quazi.deen@example.com", phone: "+880 1711-123459", specialization: "Neurologist", registration_number: "BMDC-12348", experience_years: 25, hospital_affiliation: "National Institute of Neurosciences", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-5", user_id: "", full_name: "Dr. Mohammad Shah Kamal", email: "shah.kamal@example.com", phone: "+880 1711-123460", specialization: "Neurologist", registration_number: "BMDC-12349", experience_years: 16, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-6", user_id: "", full_name: "Dr. Syeda Afroza", email: "syeda.afroza@example.com", phone: "+880 1711-123461", specialization: "Pediatrician", registration_number: "BMDC-12350", experience_years: 20, hospital_affiliation: "Dhaka Shishu Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-7", user_id: "", full_name: "Dr. Md. Benzir Ahmed", email: "benzir.ahmed@example.com", phone: "+880 1711-123462", specialization: "Pediatrician", registration_number: "BMDC-12351", experience_years: 14, hospital_affiliation: "Apollo Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-8", user_id: "", full_name: "Dr. Nazmun Nahar", email: "nazmun.nahar@example.com", phone: "+880 1711-123463", specialization: "Dermatologist", registration_number: "BMDC-12352", experience_years: 12, hospital_affiliation: "Evercare Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-9", user_id: "", full_name: "Dr. Fatema Akhter", email: "fatema.akhter@example.com", phone: "+880 1711-123464", specialization: "Dermatologist", registration_number: "BMDC-12353", experience_years: 10, hospital_affiliation: "Labaid Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  { id: "mock-10", user_id: "", full_name: "Dr. Rashida Begum", email: "rashida.begum@example.com", phone: "+880 1711-123465", specialization: "Gynecologist", registration_number: "BMDC-12354", experience_years: 18, hospital_affiliation: "Square Hospital", documents_url: null, verification_status: "approved", rejection_reason: null, created_at: new Date().toISOString(), is_active: true, isMock: true },
-  // Adding more mock doctors (11-130)
-  ...Array.from({ length: 120 }, (_, i) => {
-    const specialties = ["Cardiologist", "Neurologist", "Dermatologist", "Gynecologist", "Pediatrician", "Orthopedic", "ENT Specialist", "Psychiatrist", "General Physician", "Gastroenterologist", "Urologist", "Ophthalmologist", "Pulmonologist", "Nephrologist", "Oncologist"];
-    const hospitals = ["Square Hospital", "United Hospital", "Apollo Hospital", "Evercare Hospital", "Labaid Hospital", "Popular Hospital", "Ibn Sina Hospital", "Praava Health", "Dhaka Medical College", "BIRDEM Hospital"];
-    const firstNames = ["Dr. Md.", "Dr. Mohammad", "Dr. Abdul", "Dr. Syed", "Dr. Ahmed", "Dr. Fatima", "Dr. Ayesha", "Dr. Nusrat", "Dr. Rafiq", "Dr. Kamal"];
-    const lastNames = ["Rahman", "Islam", "Hossain", "Khan", "Ahmed", "Akhter", "Begum", "Sultana", "Uddin", "Chowdhury"];
-    const idx = i + 11;
-    return {
-      id: `mock-${idx}`,
-      user_id: "",
-      full_name: `${firstNames[i % firstNames.length]} ${lastNames[i % lastNames.length]} ${idx}`,
-      email: `doctor${idx}@example.com`,
-      phone: `+880 17${Math.floor(10000000 + Math.random() * 90000000)}`,
-      specialization: specialties[i % specialties.length],
-      registration_number: `BMDC-${12350 + idx}`,
-      experience_years: 5 + (i % 25),
-      hospital_affiliation: hospitals[i % hospitals.length],
-      documents_url: null,
-      verification_status: "approved",
-      rejection_reason: null,
-      created_at: new Date().toISOString(),
-      is_active: true,
-      isMock: true,
-    } as Doctor;
-  }),
-];
 
 export default function DoctorManager() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -119,12 +79,9 @@ export default function DoctorManager() {
     if (error) {
       toast.error("Failed to fetch doctors");
       console.error(error);
-      // Still show mock doctors even if DB fails
-      setDoctors(mockDoctors);
+      setDoctors([]);
     } else {
-      // Combine database doctors with mock doctors
-      const dbDoctors = (data || []).map(d => ({ ...d, isMock: false }));
-      setDoctors([...dbDoctors, ...mockDoctors]);
+      setDoctors(data || []);
     }
     setLoading(false);
   };
@@ -268,38 +225,23 @@ export default function DoctorManager() {
   const handleDeleteDoctor = async () => {
     if (!doctorToDelete) return;
 
-    if (doctorToDelete.isMock) {
-      // Remove mock doctor from local state
-      setDoctors(prev => prev.filter(d => d.id !== doctorToDelete.id));
-      toast.success(`${doctorToDelete.full_name} has been deleted`);
-    } else {
-      const { error } = await supabase
-        .from("doctors")
-        .delete()
-        .eq("id", doctorToDelete.id);
+    const { error } = await supabase
+      .from("doctors")
+      .delete()
+      .eq("id", doctorToDelete.id);
 
-      if (error) {
-        toast.error("Failed to delete doctor");
-        console.error(error);
-      } else {
-        toast.success(`${doctorToDelete.full_name} has been deleted`);
-        fetchDoctors();
-      }
+    if (error) {
+      toast.error("Failed to delete doctor");
+      console.error(error);
+    } else {
+      toast.success(`${doctorToDelete.full_name} has been deleted`);
+      fetchDoctors();
     }
     setShowDeleteDialog(false);
     setDoctorToDelete(null);
   };
 
   const handleToggleActive = async (doctor: Doctor) => {
-    if (doctor.isMock) {
-      // Toggle mock doctor locally
-      setDoctors(prev => prev.map(d => 
-        d.id === doctor.id ? { ...d, is_active: !d.is_active } : d
-      ));
-      toast.success(`${doctor.full_name} has been ${doctor.is_active ? 'deactivated' : 'activated'}`);
-      return;
-    }
-
     setProcessingId(doctor.id);
     const newStatus = !doctor.is_active;
     const { error } = await supabase
@@ -339,12 +281,6 @@ export default function DoctorManager() {
     
     if (!selectedDoctorForChamber) {
       toast.error("No doctor selected");
-      return;
-    }
-
-    // Check if it's a mock doctor - mock doctors cannot have chambers saved to DB
-    if (selectedDoctorForChamber.isMock) {
-      toast.error("Cannot add chambers to demo doctors. Please add a real doctor first.");
       return;
     }
 
@@ -618,10 +554,9 @@ export default function DoctorManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-primary border-primary hover:bg-primary hover:text-white disabled:opacity-50"
+                        className="text-primary border-primary hover:bg-primary hover:text-white"
                         onClick={() => openChamberDialog(doctor)}
-                        disabled={doctor.isMock}
-                        title={doctor.isMock ? "Cannot add chambers to demo doctors" : "Add chamber location"}
+                        title="Add chamber location"
                       >
                         <Plus className="w-4 h-4 mr-1" />
                         Add Chamber
