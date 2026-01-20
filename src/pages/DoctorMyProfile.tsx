@@ -36,6 +36,7 @@ interface Chamber {
 export default function DoctorMyProfile() {
   const [doctor, setDoctor] = useState<DoctorData | null>(null);
   const [chambers, setChambers] = useState<Chamber[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedChamber, setSelectedChamber] = useState(0);
   const { toast } = useToast();
@@ -72,7 +73,19 @@ export default function DoctorMyProfile() {
 
         setDoctor(doctorData);
 
-        // Fetch doctor chambers
+        // Fetch avatar from profiles table
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", user.id)
+          .maybeSingle();
+        
+        if (profileData?.avatar_url) {
+          const url = profileData.avatar_url.includes('?') 
+            ? profileData.avatar_url 
+            : `${profileData.avatar_url}?t=${Date.now()}`;
+          setAvatarUrl(url);
+        }
         const { data: chamberData, error: chamberError } = await supabase
           .from("doctor_chambers")
           .select("*")
@@ -150,10 +163,18 @@ export default function DoctorMyProfile() {
             </Button>
 
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-primary-foreground/20 flex items-center justify-center border-4 border-primary-foreground/20">
-                <span className="text-4xl font-bold text-primary-foreground">
-                  {doctor.full_name.charAt(0)}
-                </span>
+              <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden bg-primary-foreground/20 flex items-center justify-center border-4 border-primary-foreground/20">
+                {avatarUrl ? (
+                  <img 
+                    src={avatarUrl} 
+                    alt={doctor.full_name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-4xl font-bold text-primary-foreground">
+                    {doctor.full_name.charAt(0)}
+                  </span>
+                )}
               </div>
               <div className="text-center md:text-left">
                 <div className="flex items-center justify-center md:justify-start gap-2 mb-2">

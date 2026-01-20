@@ -138,31 +138,39 @@ export default function ProfileSettings() {
     setUploadingAvatar(true);
 
     try {
-      // Create unique file path
+      // Create unique file path with timestamp to avoid caching issues
       const fileExt = file.name.split(".").pop();
-      const filePath = `${userId}/avatar.${fileExt}`;
+      const timestamp = Date.now();
+      const filePath = `${userId}/avatar-${timestamp}.${fileExt}`;
 
-      // Upload to storage
+      // First, try to delete any existing avatar files for this user
+      const { data: existingFiles } = await supabase.storage
+        .from("avatars")
+        .list(userId);
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(f => `${userId}/${f.name}`);
+        await supabase.storage.from("avatars").remove(filesToDelete);
+      }
+
+      // Upload new file to storage
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL with cache-busting timestamp
-      const timestamp = Date.now();
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
-
-      const avatarUrlWithTimestamp = `${publicUrl}?t=${timestamp}`;
 
       // Upsert profiles table (insert if not exists, update if exists)
       const { error: updateError } = await supabase
         .from("profiles")
         .upsert({ 
           id: userId, 
-          avatar_url: avatarUrlWithTimestamp,
+          avatar_url: publicUrl,
           updated_at: new Date().toISOString()
         }, { 
           onConflict: 'id' 
@@ -170,11 +178,11 @@ export default function ProfileSettings() {
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(avatarUrlWithTimestamp);
+      setAvatarUrl(publicUrl);
       toast.success("Profile photo updated successfully");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Avatar upload error:", error);
-      toast.error("Failed to upload profile photo");
+      toast.error("Failed to upload profile photo: " + (error.message || "Unknown error"));
     } finally {
       setUploadingAvatar(false);
     }
