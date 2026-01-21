@@ -10,8 +10,8 @@ import Doctors from "./pages/Doctors";
 import DoctorProfile from "./pages/DoctorProfile";
 import Hospitals from "./pages/Hospitals";
 import VerifyDoctor from "./pages/VerifyDoctor";
-import Articles from "./pages/Articles";
-import ArticleDetail from "./pages/ArticleDetail";
+import HealthFeed from "./pages/Articles";
+import HealthFeedDetail from "./pages/ArticleDetail";
 import PatientDashboard from "./pages/PatientDashboard";
 import PatientEHR from "./pages/PatientEHR";
 import BookAppointment from "./pages/BookAppointment";
@@ -47,8 +47,11 @@ const App = () => (
             <Route path="/hospitals" element={<Hospitals />} />
             <Route path="/diagnostics" element={<Hospitals />} />
             <Route path="/verify-doctor" element={<VerifyDoctor />} />
-            <Route path="/articles" element={<Articles />} />
-            <Route path="/articles/:id" element={<ArticleDetail />} />
+            <Route path="/health-feed" element={<HealthFeed />} />
+            <Route path="/health-feed/:id" element={<HealthFeedDetail />} />
+            {/* Legacy routes - redirect to health-feed */}
+            <Route path="/articles" element={<HealthFeed />} />
+            <Route path="/articles/:id" element={<HealthFeedDetail />} />
             <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
             {/* Protected Dashboard Routes with Role-Based Access */}
             <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />

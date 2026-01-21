@@ -14,7 +14,7 @@ const sidebarLinks = [
   { name: "My Profile", icon: User, href: "/doctor/profile" },
   { name: "Appointments", icon: Calendar, href: "/doctor/appointments" },
   { name: "My Patients", icon: Users, href: "/doctor/patients" },
-  { name: "Articles", icon: FileText, href: "/articles" },
+  { name: "Health Feed", icon: FileText, href: "/health-feed" },
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -431,12 +431,14 @@ export default function DoctorDashboard() {
                   Share Your Knowledge
                 </h3>
                 <p className="text-primary-foreground/80">
-                  Write health articles and help patients stay informed about their health.
+                  Share health tips with the community and help patients stay informed.
                 </p>
               </div>
-              <Button variant="hero" size="lg">
-                <Plus className="w-4 h-4 mr-2" />
-                Write Article
+              <Button variant="hero" size="lg" asChild>
+                <Link to="/health-feed">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Post
+                </Link>
               </Button>
             </div>
           </motion.div>
