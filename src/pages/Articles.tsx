@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
-  Heart, MessageCircle, Share2, Send, Image, X, MoreHorizontal,
-  ThumbsUp, Smile, Camera, Video, MapPin, Users, Globe, ChevronDown, LogIn
+  MessageCircle, Share2, Send, Image, X, MoreHorizontal,
+  ThumbsUp, Smile, Video, Globe, LogIn, Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -17,41 +17,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatDistanceToNow } from "date-fns";
 
 interface Comment {
-  id: number;
-  author: string;
-  authorImage: string;
+  id: string;
+  author_name: string;
   content: string;
-  time: string;
-  likes: number;
-  liked: boolean;
-  replies: Reply[];
-}
-
-interface Reply {
-  id: number;
-  author: string;
-  authorImage: string;
-  content: string;
-  time: string;
-  likes: number;
-  liked: boolean;
+  created_at: string;
+  user_id: string;
+  parent_id: string | null;
+  replies?: Comment[];
 }
 
 interface Post {
-  id: number;
-  author: string;
-  authorRole: string;
-  authorImage: string;
+  id: string;
+  author_name: string;
+  author_avatar: string | null;
   content: string;
-  images: string[];
-  category: string;
-  time: string;
-  likes: number;
-  liked: boolean;
-  comments: Comment[];
-  shares: number;
+  image_url: string | null;
+  category: string | null;
+  created_at: string;
+  likes_count: number;
+  comments_count: number;
+  user_id: string;
+  comments?: Comment[];
+}
+
+interface UserProfile {
+  full_name: string;
+  avatar_url: string | null;
 }
 
 const categories = [
@@ -64,159 +58,122 @@ const categories = [
   "Child Care",
   "Diabetes",
   "COVID-19",
+  "General",
 ];
-
-const initialPosts: Post[] = [
-  {
-    id: 1,
-    author: "Dr. Sarah Ahmed",
-    authorRole: "Cardiologist",
-    authorImage: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face",
-    content: "🫀 10 Ways to Improve Your Heart Health Naturally\n\nDiscover simple lifestyle changes that can significantly reduce your risk of heart disease:\n\n1. Exercise regularly (at least 30 mins/day)\n2. Eat a heart-healthy diet\n3. Maintain a healthy weight\n4. Quit smoking\n5. Limit alcohol consumption\n\nRemember, small changes lead to big results! What's your favorite heart-healthy habit?",
-    images: ["https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=800&h=500&fit=crop"],
-    category: "Heart Health",
-    time: "2 hours ago",
-    likes: 234,
-    liked: false,
-    shares: 45,
-    comments: [
-      {
-        id: 1,
-        author: "Rahim Ahmed",
-        authorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-        content: "Great tips! I started walking 30 minutes daily and my blood pressure has improved significantly.",
-        time: "1 hour ago",
-        likes: 12,
-        liked: false,
-        replies: [
-          {
-            id: 1,
-            author: "Dr. Sarah Ahmed",
-            authorImage: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face",
-            content: "That's wonderful to hear! Consistency is key. Keep up the great work! 💪",
-            time: "45 mins ago",
-            likes: 5,
-            liked: false,
-          }
-        ]
-      },
-      {
-        id: 2,
-        author: "Fatima Begum",
-        authorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-        content: "Can you recommend some specific heart-healthy foods?",
-        time: "30 mins ago",
-        likes: 8,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
-  {
-    id: 2,
-    author: "Dr. Nasreen Akter",
-    authorRole: "Psychiatrist",
-    authorImage: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?w=100&h=100&fit=crop&crop=face",
-    content: "🧠 Understanding Anxiety: You're Not Alone\n\nAnxiety affects millions of people worldwide. If you're feeling overwhelmed, here are some immediate coping strategies:\n\n• Practice deep breathing (4-7-8 technique)\n• Ground yourself with the 5-4-3-2-1 method\n• Talk to someone you trust\n• Limit caffeine and sugar\n• Get adequate sleep\n\nRemember: Seeking help is a sign of strength, not weakness. 💙",
-    images: ["https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=800&h=500&fit=crop"],
-    category: "Mental Health",
-    time: "5 hours ago",
-    likes: 189,
-    liked: false,
-    shares: 78,
-    comments: [
-      {
-        id: 1,
-        author: "Karim Hassan",
-        authorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        content: "The 5-4-3-2-1 grounding technique has been life-changing for me. Thank you for spreading awareness!",
-        time: "4 hours ago",
-        likes: 23,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
-  {
-    id: 3,
-    author: "Dr. Kamal Hossain",
-    authorRole: "Nutritionist",
-    authorImage: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face",
-    content: "🥗 Quick Healthy Meal Prep Ideas!\n\nBusy week ahead? Here are 5 nutritious meals you can prep in under 30 minutes:\n\n1. Overnight oats with fruits\n2. Grilled chicken with roasted vegetables\n3. Lentil soup with whole grain bread\n4. Quinoa salad with chickpeas\n5. Stir-fried tofu with brown rice\n\nShare your favorite healthy meal prep ideas below! 👇",
-    images: [
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=500&fit=crop"
-    ],
-    category: "Nutrition",
-    time: "1 day ago",
-    likes: 156,
-    liked: false,
-    shares: 34,
-    comments: [],
-  },
-  {
-    id: 4,
-    author: "Dr. Fatima Khan",
-    authorRole: "Pediatrician",
-    authorImage: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop&crop=face",
-    content: "👶 Vaccination Schedule Reminder for Parents!\n\nKeeping your child's vaccinations up to date is crucial for their health and the community. Don't skip or delay scheduled vaccines!\n\nIf you have any concerns about vaccines, please consult with your pediatrician. We're here to answer all your questions with evidence-based information.\n\n#ChildHealth #Vaccination #HealthyKids",
-    images: [],
-    category: "Child Care",
-    time: "2 days ago",
-    likes: 198,
-    liked: false,
-    shares: 89,
-    comments: [
-      {
-        id: 1,
-        author: "Nusrat Jahan",
-        authorImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face",
-        content: "My baby just completed her 6-month vaccines. So relieved! Thank you for the reminder, Doctor.",
-        time: "1 day ago",
-        likes: 15,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
-];
-
-const currentUser = {
-  name: "You",
-  image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
-};
 
 export default function Articles() {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [newPostContent, setNewPostContent] = useState("");
-  const [newPostImages, setNewPostImages] = useState<string[]>([]);
-  const [showComments, setShowComments] = useState<Record<number, boolean>>({});
-  const [commentText, setCommentText] = useState<Record<number, string>>({});
-  const [replyTo, setReplyTo] = useState<{ postId: number; commentId: number } | null>(null);
+  const [newPostCategory, setNewPostCategory] = useState("General");
+  const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState<Record<string, boolean>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [replyTo, setReplyTo] = useState<{ postId: string; commentId: string } | null>(null);
   const [replyText, setReplyText] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   const isAuthenticated = !!session;
 
+  // Fetch user session and profile
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
-        setLoading(false);
+        if (session?.user) {
+          // Fetch user profile for avatar
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, avatar_url")
+            .eq("id", session.user.id)
+            .single();
+          
+          if (profile) {
+            setUserProfile(profile);
+          }
+        } else {
+          setUserProfile(null);
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (profile) {
+          setUserProfile(profile);
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch posts from database
+  const fetchPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: postsData, error } = await supabase
+        .from("health_posts")
+        .select("*")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch comments for each post
+      const postsWithComments = await Promise.all(
+        (postsData || []).map(async (post) => {
+          const { data: comments } = await supabase
+            .from("post_comments")
+            .select("*")
+            .eq("post_id", post.id)
+            .eq("status", "approved")
+            .is("parent_id", null)
+            .order("created_at", { ascending: true });
+
+          // Fetch replies for each comment
+          const commentsWithReplies = await Promise.all(
+            (comments || []).map(async (comment) => {
+              const { data: replies } = await supabase
+                .from("post_comments")
+                .select("*")
+                .eq("parent_id", comment.id)
+                .eq("status", "approved")
+                .order("created_at", { ascending: true });
+              
+              return { ...comment, replies: replies || [] };
+            })
+          );
+
+          return { ...post, comments: commentsWithReplies };
+        })
+      );
+
+      setPosts(postsWithComments);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Failed to load posts");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const requireAuth = (action: string) => {
     if (!isAuthenticated) {
@@ -235,154 +192,195 @@ export default function Articles() {
     return selectedCategory === "All" || post.category === selectedCategory;
   });
 
-  const handleCreatePost = () => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be less than 5MB");
+        return;
+      }
+      setNewPostImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setNewPostImage(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+  };
+
+  const handleCreatePost = async () => {
     if (!requireAuth("create posts")) return;
-    if (!newPostContent.trim() && newPostImages.length === 0) return;
+    if (!newPostContent.trim()) {
+      toast.error("Please write something to post");
+      return;
+    }
 
-    const newPost: Post = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorRole: "Community Member",
-      authorImage: currentUser.image,
-      content: newPostContent,
-      images: newPostImages,
-      category: "General",
-      time: "Just now",
-      likes: 0,
-      liked: false,
-      shares: 0,
-      comments: [],
-    };
+    setPosting(true);
+    try {
+      let imageUrl = null;
 
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
-    setNewPostImages([]);
+      // Upload image if selected
+      if (newPostImage && session?.user) {
+        const fileExt = newPostImage.name.split(".").pop();
+        const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("health-posts")
+          .upload(fileName, newPostImage);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("health-posts")
+          .getPublicUrl(fileName);
+        
+        imageUrl = publicUrl;
+      }
+
+      const { error } = await supabase.from("health_posts").insert({
+        user_id: session!.user.id,
+        author_name: userProfile?.full_name || session!.user.email?.split("@")[0] || "Anonymous",
+        author_avatar: userProfile?.avatar_url,
+        content: newPostContent,
+        image_url: imageUrl,
+        category: newPostCategory,
+        status: "approved", // For now, auto-approve
+        likes_count: 0,
+        comments_count: 0,
+      });
+
+      if (error) throw error;
+
+      toast.success("Post created successfully!");
+      setNewPostContent("");
+      setNewPostCategory("General");
+      removeImage();
+      fetchPosts();
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create post");
+    } finally {
+      setPosting(false);
+    }
   };
 
-  const handleImageUpload = () => {
-    // Simulate image upload with sample images
-    const sampleImages = [
-      "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800&h=500&fit=crop",
-    ];
-    const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-    setNewPostImages([...newPostImages, randomImage]);
-  };
-
-  const removeImage = (index: number) => {
-    setNewPostImages(newPostImages.filter((_, i) => i !== index));
-  };
-
-  const toggleLike = (postId: number) => {
+  const toggleLike = async (postId: string) => {
     if (!requireAuth("like posts")) return;
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          liked: !post.liked,
-          likes: post.liked ? post.likes - 1 : post.likes + 1,
-        };
+    
+    const isLiked = likedPosts.has(postId);
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    // Optimistic update
+    const newLikedPosts = new Set(likedPosts);
+    if (isLiked) {
+      newLikedPosts.delete(postId);
+    } else {
+      newLikedPosts.add(postId);
+    }
+    setLikedPosts(newLikedPosts);
+
+    // Update likes count in database
+    const newLikesCount = isLiked ? post.likes_count - 1 : post.likes_count + 1;
+    
+    const { error } = await supabase
+      .from("health_posts")
+      .update({ likes_count: Math.max(0, newLikesCount) })
+      .eq("id", postId);
+
+    if (error) {
+      // Revert on error
+      if (isLiked) {
+        newLikedPosts.add(postId);
+      } else {
+        newLikedPosts.delete(postId);
       }
-      return post;
-    }));
+      setLikedPosts(newLikedPosts);
+      toast.error("Failed to update like");
+    } else {
+      // Update local state
+      setPosts(posts.map(p => 
+        p.id === postId ? { ...p, likes_count: Math.max(0, newLikesCount) } : p
+      ));
+    }
   };
 
-  const toggleCommentLike = (postId: number, commentId: number) => {
-    if (!requireAuth("like comments")) return;
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: post.comments.map(comment => {
-            if (comment.id === commentId) {
-              return {
-                ...comment,
-                liked: !comment.liked,
-                likes: comment.liked ? comment.likes - 1 : comment.likes + 1,
-              };
-            }
-            return comment;
-          }),
-        };
-      }
-      return post;
-    }));
-  };
-
-  const addComment = (postId: number) => {
+  const addComment = async (postId: string) => {
     if (!requireAuth("comment on posts")) return;
     const text = commentText[postId];
     if (!text?.trim()) return;
 
-    const newComment: Comment = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorImage: currentUser.image,
-      content: text,
-      time: "Just now",
-      likes: 0,
-      liked: false,
-      replies: [],
-    };
+    try {
+      const { error } = await supabase.from("post_comments").insert({
+        post_id: postId,
+        user_id: session!.user.id,
+        author_name: userProfile?.full_name || session!.user.email?.split("@")[0] || "Anonymous",
+        content: text,
+        status: "approved",
+      });
 
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: [...post.comments, newComment],
-        };
+      if (error) throw error;
+
+      // Update comments count
+      const post = posts.find(p => p.id === postId);
+      if (post) {
+        await supabase
+          .from("health_posts")
+          .update({ comments_count: (post.comments_count || 0) + 1 })
+          .eq("id", postId);
       }
-      return post;
-    }));
 
-    setCommentText({ ...commentText, [postId]: "" });
+      setCommentText({ ...commentText, [postId]: "" });
+      toast.success("Comment added!");
+      fetchPosts();
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment");
+    }
   };
 
-  const addReply = (postId: number, commentId: number) => {
+  const addReply = async (postId: string, commentId: string) => {
     if (!requireAuth("reply to comments")) return;
     if (!replyText.trim()) return;
 
-    const newReply: Reply = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorImage: currentUser.image,
-      content: replyText,
-      time: "Just now",
-      likes: 0,
-      liked: false,
-    };
+    try {
+      const { error } = await supabase.from("post_comments").insert({
+        post_id: postId,
+        user_id: session!.user.id,
+        author_name: userProfile?.full_name || session!.user.email?.split("@")[0] || "Anonymous",
+        content: replyText,
+        parent_id: commentId,
+        status: "approved",
+      });
 
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: post.comments.map(comment => {
-            if (comment.id === commentId) {
-              return {
-                ...comment,
-                replies: [...comment.replies, newReply],
-              };
-            }
-            return comment;
-          }),
-        };
-      }
-      return post;
-    }));
+      if (error) throw error;
 
-    setReplyTo(null);
-    setReplyText("");
+      setReplyTo(null);
+      setReplyText("");
+      toast.success("Reply added!");
+      fetchPosts();
+    } catch (error) {
+      console.error("Error adding reply:", error);
+      toast.error("Failed to add reply");
+    }
   };
 
-  const sharePost = (postId: number) => {
-    if (!requireAuth("share posts")) return;
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return { ...post, shares: post.shares + 1 };
-      }
-      return post;
-    }));
-    // Could add toast notification here
+  const sharePost = (postId: string) => {
+    const url = `${window.location.origin}/health-feed/${postId}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return "Just now";
+    }
   };
 
   return (
@@ -438,8 +436,10 @@ export default function Articles() {
             >
               <div className="flex gap-3">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={currentUser.image} />
-                  <AvatarFallback>You</AvatarFallback>
+                  <AvatarImage src={userProfile?.avatar_url || ""} />
+                  <AvatarFallback>
+                    {userProfile?.full_name?.[0] || session?.user.email?.[0]?.toUpperCase() || "U"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <Textarea
@@ -449,43 +449,63 @@ export default function Articles() {
                     className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
                   />
                   
-                  {/* Image Preview */}
-                  {newPostImages.length > 0 && (
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {newPostImages.map((img, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={img}
-                            alt="Upload preview"
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
+                  {/* Category Selection */}
+                  <div className="mt-2">
+                    <select
+                      value={newPostCategory}
+                      onChange={(e) => setNewPostCategory(e.target.value)}
+                      className="text-sm bg-muted rounded-lg px-3 py-1.5 border-0 outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {categories.filter(c => c !== "All").map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
+                    </select>
+                  </div>
+                  
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative mt-3 inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="Upload preview"
+                        className="w-32 h-32 object-cover rounded-lg"
+                      />
+                      <button
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                     <div className="flex items-center gap-1">
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageSelect}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-primary"
+                          asChild
+                        >
+                          <span>
+                            <Image className="w-5 h-5 mr-1" />
+                            Photo
+                          </span>
+                        </Button>
+                      </label>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-primary"
-                        onClick={handleImageUpload}
-                      >
-                        <Image className="w-5 h-5 mr-1" />
-                        Photo
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-primary"
+                        disabled
                       >
                         <Video className="w-5 h-5 mr-1" />
                         Video
@@ -494,6 +514,7 @@ export default function Articles() {
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-primary hidden sm:flex"
+                        disabled
                       >
                         <Smile className="w-5 h-5 mr-1" />
                         Feeling
@@ -501,10 +522,17 @@ export default function Articles() {
                     </div>
                     <Button
                       onClick={handleCreatePost}
-                      disabled={!newPostContent.trim() && newPostImages.length === 0}
+                      disabled={!newPostContent.trim() || posting}
                       size="sm"
                     >
-                      Post
+                      {posting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                          Posting...
+                        </>
+                      ) : (
+                        "Post"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -528,261 +556,261 @@ export default function Articles() {
             </motion.div>
           )}
 
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
+
           {/* Posts Feed */}
-          <AnimatePresence>
-            {filteredPosts.map((post, index) => (
-              <motion.article
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
-              >
-                {/* Post Header */}
-                <div className="p-4 pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={post.authorImage} />
-                        <AvatarFallback>{post.author[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground">{post.author}</h3>
-                          {post.authorRole !== "Community Member" && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {post.authorRole}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{post.time}</span>
-                          <span>•</span>
-                          <Globe className="w-3 h-3" />
-                          <span>{post.category}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-5 h-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Save post</DropdownMenuItem>
-                        <DropdownMenuItem>Hide post</DropdownMenuItem>
-                        <DropdownMenuItem>Report</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Post Content */}
-                  <div className="mt-3">
-                    <p className="text-foreground whitespace-pre-wrap">{post.content}</p>
-                  </div>
-                </div>
-
-                {/* Post Images */}
-                {post.images.length > 0 && (
-                  <div className={`grid ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-0.5`}>
-                    {post.images.map((img, imgIndex) => (
-                      <img
-                        key={imgIndex}
-                        src={img}
-                        alt={`Post image ${imgIndex + 1}`}
-                        className="w-full h-64 object-cover"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Engagement Stats */}
-                <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border">
-                  <div className="flex items-center gap-1">
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <ThumbsUp className="w-3 h-3 text-primary-foreground" />
-                    </div>
-                    <span>{post.likes}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                      className="hover:underline"
-                    >
-                      {post.comments.length} comments
-                    </button>
-                    <span>{post.shares} shares</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="px-4 py-1 flex items-center justify-around border-b border-border">
-                  <Button
-                    variant="ghost"
-                    className={`flex-1 gap-2 ${post.liked ? "text-primary" : "text-muted-foreground"}`}
-                    onClick={() => toggleLike(post.id)}
-                  >
-                    <ThumbsUp className={`w-5 h-5 ${post.liked ? "fill-primary" : ""}`} />
-                    Like
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex-1 gap-2 text-muted-foreground"
-                    onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Comment
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex-1 gap-2 text-muted-foreground"
-                    onClick={() => sharePost(post.id)}
-                  >
-                    <Share2 className="w-5 h-5" />
-                    Share
-                  </Button>
-                </div>
-
-                {/* Comments Section */}
-                <AnimatePresence>
-                  {showComments[post.id] && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="p-4 space-y-4">
-                        {/* Comment Input */}
-                        <div className="flex gap-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={currentUser.image} />
-                            <AvatarFallback>You</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Write a comment..."
-                              value={commentText[post.id] || ""}
-                              onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
-                              onKeyPress={(e) => e.key === "Enter" && addComment(post.id)}
-                              className="flex-1 bg-muted rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => addComment(post.id)}
-                              disabled={!commentText[post.id]?.trim()}
-                            >
-                              <Send className="w-4 h-4" />
-                            </Button>
+          {!loading && (
+            <AnimatePresence>
+              {filteredPosts.map((post, index) => (
+                <motion.article
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
+                >
+                  {/* Post Header */}
+                  <div className="p-4 pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={post.author_avatar || ""} />
+                          <AvatarFallback>{post.author_name?.[0] || "U"}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground">{post.author_name}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatTime(post.created_at)}</span>
+                            <span>•</span>
+                            <Globe className="w-3 h-3" />
+                            <span>{post.category || "General"}</span>
                           </div>
                         </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => sharePost(post.id)}>
+                            Copy link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>Report</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
-                        {/* Comments List */}
-                        {post.comments.map((comment) => (
-                          <div key={comment.id} className="space-y-2">
+                    {/* Post Content */}
+                    <div className="mt-3">
+                      <p className="text-foreground whitespace-pre-wrap">{post.content}</p>
+                    </div>
+                  </div>
+
+                  {/* Post Image */}
+                  {post.image_url && (
+                    <div className="w-full">
+                      <img
+                        src={post.image_url}
+                        alt="Post image"
+                        className="w-full max-h-96 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {/* Engagement Stats */}
+                  <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border">
+                    <div className="flex items-center gap-1">
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <ThumbsUp className="w-3 h-3 text-primary-foreground" />
+                      </div>
+                      <span>{post.likes_count || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
+                        className="hover:underline"
+                      >
+                        {post.comments?.length || 0} comments
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="px-4 py-1 flex items-center justify-around border-b border-border">
+                    <Button
+                      variant="ghost"
+                      className={`flex-1 gap-2 ${likedPosts.has(post.id) ? "text-primary" : "text-muted-foreground"}`}
+                      onClick={() => toggleLike(post.id)}
+                    >
+                      <ThumbsUp className={`w-5 h-5 ${likedPosts.has(post.id) ? "fill-primary" : ""}`} />
+                      Like
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="flex-1 gap-2 text-muted-foreground"
+                      onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Comment
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="flex-1 gap-2 text-muted-foreground"
+                      onClick={() => sharePost(post.id)}
+                    >
+                      <Share2 className="w-5 h-5" />
+                      Share
+                    </Button>
+                  </div>
+
+                  {/* Comments Section */}
+                  <AnimatePresence>
+                    {showComments[post.id] && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-4 space-y-4">
+                          {/* Comment Input */}
+                          {isAuthenticated && (
                             <div className="flex gap-2">
                               <Avatar className="w-8 h-8">
-                                <AvatarImage src={comment.authorImage} />
-                                <AvatarFallback>{comment.author[0]}</AvatarFallback>
+                                <AvatarImage src={userProfile?.avatar_url || ""} />
+                                <AvatarFallback>
+                                  {userProfile?.full_name?.[0] || "U"}
+                                </AvatarFallback>
                               </Avatar>
-                              <div className="flex-1">
-                                <div className="bg-muted rounded-2xl px-3 py-2">
-                                  <p className="font-semibold text-sm text-foreground">{comment.author}</p>
-                                  <p className="text-sm text-foreground">{comment.content}</p>
-                                </div>
-                                <div className="flex items-center gap-4 mt-1 ml-2 text-xs">
-                                  <button
-                                    onClick={() => toggleCommentLike(post.id, comment.id)}
-                                    className={`font-semibold hover:underline ${comment.liked ? "text-primary" : "text-muted-foreground"}`}
-                                  >
-                                    Like {comment.likes > 0 && `(${comment.likes})`}
-                                  </button>
-                                  <button
-                                    onClick={() => setReplyTo({ postId: post.id, commentId: comment.id })}
-                                    className="font-semibold text-muted-foreground hover:underline"
-                                  >
-                                    Reply
-                                  </button>
-                                  <span className="text-muted-foreground">{comment.time}</span>
-                                </div>
-
-                                {/* Replies */}
-                                {comment.replies.length > 0 && (
-                                  <div className="mt-2 ml-4 space-y-2">
-                                    {comment.replies.map((reply) => (
-                                      <div key={reply.id} className="flex gap-2">
-                                        <Avatar className="w-6 h-6">
-                                          <AvatarImage src={reply.authorImage} />
-                                          <AvatarFallback>{reply.author[0]}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                          <div className="bg-muted rounded-2xl px-3 py-2">
-                                            <p className="font-semibold text-xs text-foreground">{reply.author}</p>
-                                            <p className="text-xs text-foreground">{reply.content}</p>
-                                          </div>
-                                          <div className="flex items-center gap-3 mt-1 ml-2 text-xs text-muted-foreground">
-                                            <button className="font-semibold hover:underline">Like</button>
-                                            <span>{reply.time}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Reply Input */}
-                                {replyTo?.postId === post.id && replyTo?.commentId === comment.id && (
-                                  <div className="mt-2 ml-4 flex gap-2">
-                                    <Avatar className="w-6 h-6">
-                                      <AvatarImage src={currentUser.image} />
-                                      <AvatarFallback>You</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 flex gap-2">
-                                      <input
-                                        type="text"
-                                        placeholder={`Reply to ${comment.author}...`}
-                                        value={replyText}
-                                        onChange={(e) => setReplyText(e.target.value)}
-                                        onKeyPress={(e) => e.key === "Enter" && addReply(post.id, comment.id)}
-                                        className="flex-1 bg-muted rounded-full px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary"
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7"
-                                        onClick={() => addReply(post.id, comment.id)}
-                                      >
-                                        <Send className="w-3 h-3" />
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7"
-                                        onClick={() => setReplyTo(null)}
-                                      >
-                                        <X className="w-3 h-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                )}
+                              <div className="flex-1 flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Write a comment..."
+                                  value={commentText[post.id] || ""}
+                                  onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
+                                  onKeyPress={(e) => e.key === "Enter" && addComment(post.id)}
+                                  className="flex-1 bg-muted rounded-full px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => addComment(post.id)}
+                                  disabled={!commentText[post.id]?.trim()}
+                                >
+                                  <Send className="w-4 h-4" />
+                                </Button>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.article>
-            ))}
-          </AnimatePresence>
+                          )}
 
-          {filteredPosts.length === 0 && (
+                          {/* Comments List */}
+                          {post.comments?.map((comment) => (
+                            <div key={comment.id} className="space-y-2">
+                              <div className="flex gap-2">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback>{comment.author_name?.[0] || "U"}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                  <div className="bg-muted rounded-2xl px-3 py-2">
+                                    <p className="font-semibold text-sm text-foreground">{comment.author_name}</p>
+                                    <p className="text-sm text-foreground">{comment.content}</p>
+                                  </div>
+                                  <div className="flex items-center gap-4 mt-1 ml-2 text-xs">
+                                    {isAuthenticated && (
+                                      <button
+                                        onClick={() => setReplyTo({ postId: post.id, commentId: comment.id })}
+                                        className="font-semibold text-muted-foreground hover:underline"
+                                      >
+                                        Reply
+                                      </button>
+                                    )}
+                                    <span className="text-muted-foreground">{formatTime(comment.created_at)}</span>
+                                  </div>
+
+                                  {/* Replies */}
+                                  {comment.replies && comment.replies.length > 0 && (
+                                    <div className="mt-2 ml-4 space-y-2">
+                                      {comment.replies.map((reply) => (
+                                        <div key={reply.id} className="flex gap-2">
+                                          <Avatar className="w-6 h-6">
+                                            <AvatarFallback>{reply.author_name?.[0] || "U"}</AvatarFallback>
+                                          </Avatar>
+                                          <div>
+                                            <div className="bg-muted rounded-2xl px-3 py-2">
+                                              <p className="font-semibold text-xs text-foreground">{reply.author_name}</p>
+                                              <p className="text-xs text-foreground">{reply.content}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1 ml-2 text-xs text-muted-foreground">
+                                              <span>{formatTime(reply.created_at)}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Reply Input */}
+                                  {replyTo?.postId === post.id && replyTo?.commentId === comment.id && (
+                                    <div className="mt-2 ml-4 flex gap-2">
+                                      <Avatar className="w-6 h-6">
+                                        <AvatarImage src={userProfile?.avatar_url || ""} />
+                                        <AvatarFallback>
+                                          {userProfile?.full_name?.[0] || "U"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1 flex gap-2">
+                                        <input
+                                          type="text"
+                                          placeholder={`Reply to ${comment.author_name}...`}
+                                          value={replyText}
+                                          onChange={(e) => setReplyText(e.target.value)}
+                                          onKeyPress={(e) => e.key === "Enter" && addReply(post.id, comment.id)}
+                                          className="flex-1 bg-muted rounded-full px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary"
+                                          autoFocus
+                                        />
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          onClick={() => addReply(post.id, comment.id)}
+                                        >
+                                          <Send className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          onClick={() => setReplyTo(null)}
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.article>
+              ))}
+            </AnimatePresence>
+          )}
+
+          {!loading && filteredPosts.length === 0 && (
             <div className="text-center py-12 bg-card rounded-xl">
               <p className="text-muted-foreground">No posts in this category yet. Be the first to share!</p>
             </div>
