@@ -14,8 +14,8 @@ const sidebarLinks = [
   { name: "My Profile", icon: User, href: "/doctor/profile" },
   { name: "Appointments", icon: Calendar, href: "/doctor/appointments" },
   { name: "My Patients", icon: Users, href: "/doctor/patients" },
-  { name: "Articles", icon: FileText, href: "/doctor/articles" },
-  { name: "Settings", icon: Settings, href: "/doctor/settings" },
+  { name: "Articles", icon: FileText, href: "/articles" },
+  { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
 const todayAppointments = [
