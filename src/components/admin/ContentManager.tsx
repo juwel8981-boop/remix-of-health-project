@@ -2,13 +2,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   FileText, CheckCircle2, XCircle, Eye, MessageSquare, 
-  Heart, Filter, Search, MoreHorizontal, Image, Clock
+  Heart, Search, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -174,8 +173,8 @@ export default function ContentManager() {
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground mb-1">Content Management</h1>
-        <p className="text-muted-foreground">Moderate health feed posts and manage articles</p>
+        <h1 className="font-display text-2xl font-bold text-foreground mb-1">Health Feed Management</h1>
+        <p className="text-muted-foreground">Moderate community health posts and discussions</p>
       </div>
 
       {/* Stats */}

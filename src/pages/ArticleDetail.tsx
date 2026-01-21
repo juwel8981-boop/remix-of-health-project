@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useParams, Link } from "react-router-dom";
 import { 
   Heart, MessageCircle, Share2, Clock, Calendar, ArrowLeft,
-  Send, ThumbsUp, Reply, MoreHorizontal
+  Send, ThumbsUp, Reply
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -112,9 +112,9 @@ export default function ArticleDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Article Not Found</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Post Not Found</h1>
           <Button asChild variant="healthcare">
-            <Link to="/articles">Browse All Articles</Link>
+            <Link to="/health-feed">Browse Health Feed</Link>
           </Button>
         </div>
       </div>
@@ -173,11 +173,11 @@ export default function ArticleDetail() {
         
         {/* Back Button */}
         <Link
-          to="/articles"
+          to="/health-feed"
           className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm text-foreground hover:bg-card transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Articles
+          Back to Health Feed
         </Link>
       </section>
 
