@@ -17,6 +17,7 @@ import PatientEHR from "./pages/PatientEHR";
 import BookAppointment from "./pages/BookAppointment";
 import PatientAppointments from "./pages/PatientAppointments";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorAppointments from "./pages/DoctorAppointments";
 import DoctorMyProfile from "./pages/DoctorMyProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import AIDoctorFinder from "./pages/AIDoctorFinder";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/patient/book-appointment" element={<ProtectedRoute requiredRole="patient"><BookAppointment /></ProtectedRoute>} />
             <Route path="/patient/appointments" element={<ProtectedRoute requiredRole="patient"><PatientAppointments /></ProtectedRoute>} />
             <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
+            <Route path="/doctor/appointments" element={<ProtectedRoute requiredRole="doctor"><DoctorAppointments /></ProtectedRoute>} />
             <Route path="/doctor/profile" element={<ProtectedRoute requiredRole="doctor"><DoctorMyProfile /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
             {/* Profile Settings - Protected but no specific role required */}
