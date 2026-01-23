@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2
+  Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2, Newspaper
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -14,14 +14,20 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PatientHealthTracker } from "@/components/patient/PatientHealthTracker";
+import { PatientReminders } from "@/components/patient/PatientReminders";
+import { PatientMyArticles } from "@/components/patient/PatientMyArticles";
 
-const sidebarLinks = [
-  { name: "Overview", icon: Activity, href: "/patient" },
-  { name: "My Profile", icon: User, href: "/settings" },
-  { name: "EHR Records", icon: FileText, href: "/patient/ehr" },
-  { name: "Appointments", icon: Calendar, href: "/patient/appointments" },
-  { name: "Health Tracker", icon: Heart, href: "/patient" },
-  { name: "Reminders", icon: Bell, href: "/patient" },
+type TabType = "overview" | "health-tracker" | "reminders" | "my-articles";
+
+const sidebarLinks: { name: string; icon: typeof Activity; tab: TabType | null; href?: string }[] = [
+  { name: "Overview", icon: Activity, tab: "overview" },
+  { name: "My Profile", icon: User, tab: null, href: "/settings" },
+  { name: "EHR Records", icon: FileText, tab: null, href: "/patient/ehr" },
+  { name: "Appointments", icon: Calendar, tab: null, href: "/patient/appointments" },
+  { name: "Health Tracker", icon: Heart, tab: "health-tracker" },
+  { name: "Reminders", icon: Bell, tab: "reminders" },
+  { name: "My Articles", icon: Newspaper, tab: "my-articles" },
 ];
 
 interface Medication {
@@ -57,7 +63,7 @@ const defaultMedicationForm: MedicationFormData = {
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [patientData, setPatientData] = useState<{
     full_name: string;
     blood_group: string | null;
@@ -79,7 +85,6 @@ export default function PatientDashboard() {
     const fetchPatientData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Fetch patient data
         const { data } = await supabase
           .from('patients')
           .select('full_name, blood_group, date_of_birth, weight, height')
@@ -89,28 +94,24 @@ export default function PatientDashboard() {
           setPatientData(data);
         }
 
-        // Fetch avatar - add timestamp to ensure fresh image
         const { data: profile } = await supabase
           .from('profiles')
           .select('avatar_url')
           .eq('id', user.id)
           .maybeSingle();
         if (profile?.avatar_url) {
-          // Ensure cache-busting by checking if timestamp exists
           const url = profile.avatar_url.includes('?') 
             ? profile.avatar_url 
             : `${profile.avatar_url}?t=${Date.now()}`;
           setAvatarUrl(url);
         }
 
-        // Fetch EHR count
         const { count: ehrCountData } = await supabase
           .from('ehr_records')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id);
         setEhrCount(ehrCountData || 0);
 
-        // Fetch upcoming appointments count
         const { count: apptCount } = await supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
@@ -294,6 +295,261 @@ export default function PatientDashboard() {
     }
   };
 
+  const handleSidebarClick = (link: typeof sidebarLinks[0]) => {
+    if (link.href) {
+      navigate(link.href);
+    } else if (link.tab) {
+      setActiveTab(link.tab);
+    }
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "health-tracker":
+        return <PatientHealthTracker />;
+      case "reminders":
+        return <PatientReminders />;
+      case "my-articles":
+        return <PatientMyArticles />;
+      default:
+        return renderOverview();
+    }
+  };
+
+  const renderOverview = () => (
+    <>
+      {/* Header */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
+            Welcome back, {firstName}!
+          </h1>
+          <p className="text-muted-foreground">
+            Here's an overview of your health and upcoming activities.
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Health Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        {healthStats.map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="healthcare-card"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <stat.icon className="w-5 h-5 text-primary" />
+              </div>
+              <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                stat.status === "normal" 
+                  ? "bg-healthcare-green-light text-healthcare-green" 
+                  : stat.status === "underweight" || stat.status === "overweight"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                  : stat.status === "obese"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {stat.status}
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {stat.value}
+              <span className="text-sm font-normal text-muted-foreground ml-1">{stat.unit}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">{stat.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Upcoming Appointments */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="lg:col-span-2 healthcare-card"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Upcoming Appointments
+            </h2>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/patient/appointments">
+                View All <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+
+          {appointmentCount > 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="w-12 h-12 mx-auto mb-3 text-primary" />
+              <p className="text-foreground font-medium">{appointmentCount} upcoming appointment{appointmentCount !== 1 ? 's' : ''}</p>
+              <Button variant="outline" className="mt-4" asChild>
+                <Link to="/patient/appointments">View Appointments</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No upcoming appointments</p>
+              <Button 
+                variant="healthcare-outline" 
+                className="mt-4"
+                onClick={() => navigate('/patient/book-appointment')}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Book New Appointment
+              </Button>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Medications */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="healthcare-card"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              My Medications
+            </h2>
+            <Button variant="outline" size="sm" onClick={openAddMedicationDialog}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add
+            </Button>
+          </div>
+
+          {medications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Pill className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No medications added yet</p>
+              <Button variant="link" onClick={openAddMedicationDialog}>Add your first medication</Button>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {medications.map((med) => (
+                <div key={med.id} className="p-3 rounded-lg bg-muted group">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-medium text-foreground">{med.name}</h4>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMedicationDialog(med)}>
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteMedication(med.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{med.dosage} • {med.frequency}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex-1 h-2 bg-border rounded-full overflow-hidden mr-2">
+                      <div 
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: `${Math.min((med.remaining / 30) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {med.remaining} left
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => toggleReminder(med)}
+                    className={`mt-2 text-xs flex items-center gap-1 ${med.reminder_enabled ? 'text-primary' : 'text-muted-foreground hover:text-primary'} transition-colors`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    {med.reminder_enabled ? `Reminder at ${med.reminder_time}` : 'Set Reminder'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* EHR Records */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="healthcare-card mt-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            Electronic Health Records (EHR)
+          </h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/patient/ehr">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/patient/ehr">
+                View All <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {ehrCount > 0 ? (
+          <div className="text-center py-8">
+            <FileText className="w-12 h-12 mx-auto mb-3 text-primary" />
+            <p className="text-foreground font-medium">{ehrCount} record{ehrCount !== 1 ? 's' : ''} stored</p>
+            <Button variant="outline" className="mt-4" asChild>
+              <Link to="/patient/ehr">View All Records</Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>No EHR records uploaded yet</p>
+            <Button variant="outline" className="mt-4" asChild>
+              <Link to="/patient/ehr">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Your First Record
+              </Link>
+            </Button>
+          </div>
+        )}
+      </motion.div>
+
+      {/* AI Doctor Finder */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mt-6 p-6 rounded-2xl bg-gradient-to-r from-primary to-secondary"
+      >
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 flex items-center justify-center">
+            <Brain className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h3 className="font-display text-xl font-semibold text-primary-foreground mb-1">
+              AI Doctor Finder
+            </h3>
+            <p className="text-primary-foreground/80">
+              Describe your symptoms and get intelligent recommendations for the right specialist.
+            </p>
+          </div>
+          <Button variant="hero" size="lg" asChild>
+            <Link to="/ai-doctor-finder">Try Now</Link>
+          </Button>
+        </div>
+      </motion.div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-muted">
       <div className="flex">
@@ -318,13 +574,17 @@ export default function PatientDashboard() {
             <ul className="space-y-1">
               {sidebarLinks.map((link) => (
                 <li key={link.name}>
-                  <Link
-                    to={link.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  <button
+                    onClick={() => handleSidebarClick(link)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      link.tab && activeTab === link.tab
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
                   >
                     <link.icon className="w-5 h-5" />
                     {link.name}
-                  </Link>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -333,235 +593,7 @@ export default function PatientDashboard() {
 
         {/* Main Content */}
         <main className="flex-1 p-6 lg:p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-                Welcome back, {firstName}!
-              </h1>
-              <p className="text-muted-foreground">
-                Here's an overview of your health and upcoming activities.
-              </p>
-            </motion.div>
-          </div>
-
-          {/* Health Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            {healthStats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="healthcare-card"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    stat.status === "normal" 
-                      ? "bg-healthcare-green-light text-healthcare-green" 
-                      : stat.status === "underweight" || stat.status === "overweight"
-                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      : stat.status === "obese"
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      : "bg-muted text-muted-foreground"
-                  }`}>
-                    {stat.status}
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {stat.value}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">{stat.unit}</span>
-                </p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Upcoming Appointments */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="lg:col-span-2 healthcare-card"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-lg font-semibold text-foreground">
-                  Upcoming Appointments
-                </h2>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/patient/appointments">
-                    View All <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-
-              {appointmentCount > 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 text-primary" />
-                  <p className="text-foreground font-medium">{appointmentCount} upcoming appointment{appointmentCount !== 1 ? 's' : ''}</p>
-                  <Button variant="outline" className="mt-4" asChild>
-                    <Link to="/patient/appointments">View Appointments</Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No upcoming appointments</p>
-                  <Button 
-                    variant="healthcare-outline" 
-                    className="mt-4"
-                    onClick={() => navigate('/patient/book-appointment')}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Book New Appointment
-                  </Button>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Medications */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="healthcare-card"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-lg font-semibold text-foreground">
-                  My Medications
-                </h2>
-                <Button variant="outline" size="sm" onClick={openAddMedicationDialog}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
-                </Button>
-              </div>
-
-              {medications.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Pill className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No medications added yet</p>
-                  <Button variant="link" onClick={openAddMedicationDialog}>Add your first medication</Button>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {medications.map((med) => (
-                    <div key={med.id} className="p-3 rounded-lg bg-muted group">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-medium text-foreground">{med.name}</h4>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditMedicationDialog(med)}>
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteMedication(med.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{med.dosage} • {med.frequency}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex-1 h-2 bg-border rounded-full overflow-hidden mr-2">
-                          <div 
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${Math.min((med.remaining / 30) * 100, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {med.remaining} left
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => toggleReminder(med)}
-                        className={`mt-2 text-xs flex items-center gap-1 ${med.reminder_enabled ? 'text-primary' : 'text-muted-foreground hover:text-primary'} transition-colors`}
-                      >
-                        <Clock className="w-3 h-3" />
-                        {med.reminder_enabled ? `Reminder at ${med.reminder_time}` : 'Set Reminder'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </div>
-
-          {/* EHR Records */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="healthcare-card mt-6"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-lg font-semibold text-foreground">
-                Electronic Health Records (EHR)
-              </h2>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/patient/ehr">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/patient/ehr">
-                    View All <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-
-            {ehrCount > 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 mx-auto mb-3 text-primary" />
-                <p className="text-foreground font-medium">{ehrCount} record{ehrCount !== 1 ? 's' : ''} stored</p>
-                <Button variant="outline" className="mt-4" asChild>
-                  <Link to="/patient/ehr">View All Records</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No EHR records uploaded yet</p>
-                <Button variant="outline" className="mt-4" asChild>
-                  <Link to="/patient/ehr">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Your First Record
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </motion.div>
-
-          {/* AI Doctor Finder */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 p-6 rounded-2xl bg-gradient-to-r from-primary to-secondary"
-          >
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 flex items-center justify-center">
-                <Brain className="w-8 h-8 text-primary-foreground" />
-              </div>
-              <div className="flex-1 text-center md:text-left">
-                <h3 className="font-display text-xl font-semibold text-primary-foreground mb-1">
-                  AI Doctor Finder
-                </h3>
-                <p className="text-primary-foreground/80">
-                  Describe your symptoms and get intelligent recommendations for the right specialist.
-                </p>
-              </div>
-              <Button variant="hero" size="lg" asChild>
-                <Link to="/ai-doctor-finder">Try Now</Link>
-              </Button>
-            </div>
-          </motion.div>
+          {renderContent()}
         </main>
       </div>
 
