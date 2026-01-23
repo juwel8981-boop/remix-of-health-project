@@ -302,6 +302,51 @@ export type Database = {
         }
         Relationships: []
       }
+      health_tracking: {
+        Row: {
+          blood_pressure_diastolic: number | null
+          blood_pressure_systolic: number | null
+          blood_sugar: number | null
+          created_at: string
+          heart_rate: number | null
+          height: number | null
+          id: string
+          notes: string | null
+          tracked_date: string
+          updated_at: string
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          blood_sugar?: number | null
+          created_at?: string
+          heart_rate?: number | null
+          height?: number | null
+          id?: string
+          notes?: string | null
+          tracked_date?: string
+          updated_at?: string
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          blood_sugar?: number | null
+          created_at?: string
+          heart_rate?: number | null
+          height?: number | null
+          id?: string
+          notes?: string | null
+          tracked_date?: string
+          updated_at?: string
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
       medications: {
         Row: {
           created_at: string
