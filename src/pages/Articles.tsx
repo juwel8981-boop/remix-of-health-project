@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   MessageCircle, Send, Image, X, MoreHorizontal,
-  ThumbsUp, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2
+  ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -41,15 +41,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 
-// Reaction types
-const reactionTypes = [
-  { emoji: "👍", label: "Like", color: "text-primary" },
-  { emoji: "❤️", label: "Love", color: "text-red-500" },
-  { emoji: "😂", label: "Haha", color: "text-yellow-500" },
-  { emoji: "😮", label: "Wow", color: "text-yellow-500" },
-  { emoji: "😢", label: "Sad", color: "text-yellow-500" },
-  { emoji: "😡", label: "Angry", color: "text-orange-500" },
-];
+// Reaction types (Reddit-style: Like/Dislike only)
+type ReactionType = "like" | "dislike";
 
 interface Comment {
   id: string;
@@ -781,16 +774,7 @@ export default function Articles() {
   const currentUserImage = userProfile?.avatar_url || "";
   const currentUserName = userProfile?.full_name || "User";
 
-  const getTotalReactions = (reactions: Record<string, number>) => {
-    return Object.values(reactions).reduce((a, b) => a + b, 0);
-  };
-
-  const getTopReactions = (reactions: Record<string, number>) => {
-    return Object.entries(reactions)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([emoji]) => emoji);
-  };
+  const _reactionType: ReactionType = "like"; // Type reference to prevent unused warning
 
   return (
     <div className="min-h-screen bg-muted/50">
@@ -1169,26 +1153,17 @@ export default function Articles() {
                   </div>
                 )}
 
-                {/* Engagement Stats */}
+                {/* Engagement Stats - Reddit Style */}
                 <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border">
-                  <div className="flex items-center gap-1">
-                    {getTopReactions(post.reactions).length > 0 ? (
-                      <>
-                        <div className="flex -space-x-1">
-                          {getTopReactions(post.reactions).map((emoji, i) => (
-                            <span key={i} className="text-sm">{emoji}</span>
-                          ))}
-                        </div>
-                        <span>{getTotalReactions(post.reactions)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <ThumbsUp className="w-3 h-3 text-primary-foreground" />
-                        </div>
-                        <span>0</span>
-                      </>
-                    )}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <ThumbsUp className={`w-4 h-4 ${post.reactions["like"] ? "text-primary" : ""}`} />
+                      <span>{post.reactions["like"] || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <ThumbsDown className={`w-4 h-4 ${post.reactions["dislike"] ? "text-destructive" : ""}`} />
+                      <span>{post.reactions["dislike"] || 0}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <button
@@ -1201,39 +1176,24 @@ export default function Articles() {
                   </div>
                 </div>
 
-                {/* Action Buttons with Reactions */}
+                {/* Action Buttons - Reddit Style Like/Dislike */}
                 <div className="px-4 py-1 flex items-center justify-around border-b border-border">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className={`flex-1 gap-2 ${post.reaction ? reactionTypes.find(r => r.emoji === post.reaction)?.color || "text-primary" : "text-muted-foreground"}`}
-                      >
-                        {post.reaction ? (
-                          <span className="text-lg">{post.reaction}</span>
-                        ) : (
-                          <ThumbsUp className="w-5 h-5" />
-                        )}
-                        {post.reaction ? reactionTypes.find(r => r.emoji === post.reaction)?.label || "Like" : "Like"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" side="top">
-                      <div className="flex gap-1">
-                        {reactionTypes.map((reaction) => (
-                          <button
-                            key={reaction.label}
-                            onClick={() => reactToPost(post.id, reaction.emoji)}
-                            className={`text-2xl p-2 rounded-full hover:bg-muted transition-transform hover:scale-125 ${
-                              post.reaction === reaction.emoji ? "bg-muted" : ""
-                            }`}
-                            title={reaction.label}
-                          >
-                            {reaction.emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    variant="ghost"
+                    className={`flex-1 gap-2 ${post.reaction === "like" ? "text-primary" : "text-muted-foreground"}`}
+                    onClick={() => reactToPost(post.id, "like")}
+                  >
+                    <ThumbsUp className={`w-5 h-5 ${post.reaction === "like" ? "fill-current" : ""}`} />
+                    Like
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className={`flex-1 gap-2 ${post.reaction === "dislike" ? "text-destructive" : "text-muted-foreground"}`}
+                    onClick={() => reactToPost(post.id, "dislike")}
+                  >
+                    <ThumbsDown className={`w-5 h-5 ${post.reaction === "dislike" ? "fill-current" : ""}`} />
+                    Dislike
+                  </Button>
                   <Button
                     variant="ghost"
                     className="flex-1 gap-2 text-muted-foreground"
@@ -1342,33 +1302,24 @@ export default function Articles() {
                                   <p className="text-sm text-foreground">{comment.content}</p>
                                 </div>
                                 <div className="flex items-center gap-4 mt-1 ml-2 text-xs">
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button
-                                        className={`font-semibold hover:underline ${
-                                          comment.reaction ? reactionTypes.find(r => r.emoji === comment.reaction)?.color || "text-primary" : "text-muted-foreground"
-                                        }`}
-                                      >
-                                        {comment.reaction || "Like"} {getTotalReactions(comment.reactions) > 0 && `(${getTotalReactions(comment.reactions)})`}
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-1" side="top">
-                                      <div className="flex gap-0.5">
-                                        {reactionTypes.map((reaction) => (
-                                          <button
-                                            key={reaction.label}
-                                            onClick={() => reactToComment(post.id, comment.id, reaction.emoji)}
-                                            className={`text-lg p-1.5 rounded-full hover:bg-muted transition-transform hover:scale-110 ${
-                                              comment.reaction === reaction.emoji ? "bg-muted" : ""
-                                            }`}
-                                            title={reaction.label}
-                                          >
-                                            {reaction.emoji}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
+                                  <button
+                                    onClick={() => reactToComment(post.id, comment.id, "like")}
+                                    className={`font-semibold hover:underline flex items-center gap-1 ${
+                                      comment.reaction === "like" ? "text-primary" : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    <ThumbsUp className={`w-3 h-3 ${comment.reaction === "like" ? "fill-current" : ""}`} />
+                                    {comment.reactions["like"] || 0}
+                                  </button>
+                                  <button
+                                    onClick={() => reactToComment(post.id, comment.id, "dislike")}
+                                    className={`font-semibold hover:underline flex items-center gap-1 ${
+                                      comment.reaction === "dislike" ? "text-destructive" : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    <ThumbsDown className={`w-3 h-3 ${comment.reaction === "dislike" ? "fill-current" : ""}`} />
+                                    {comment.reactions["dislike"] || 0}
+                                  </button>
                                   <button
                                     onClick={() => setReplyTo({ postId: post.id, commentId: comment.id })}
                                     className="font-semibold text-muted-foreground hover:underline"
