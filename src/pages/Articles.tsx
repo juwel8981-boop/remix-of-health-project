@@ -209,11 +209,10 @@ export default function Articles() {
 
   const fetchPosts = async () => {
     try {
-      // Fetch approved posts from health_posts table
+      // Fetch all posts from health_posts table (no approval filter)
       const { data: postsData, error } = await supabase
         .from("health_posts")
         .select("*")
-        .eq("status", "approved")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -225,7 +224,6 @@ export default function Articles() {
             .from("post_comments")
             .select("*")
             .eq("post_id", post.id)
-            .eq("status", "approved")
             .order("created_at", { ascending: true });
 
           const comments: Comment[] = (commentsData || []).map((c) => ({
@@ -310,16 +308,16 @@ export default function Articles() {
           author_name: userProfile.full_name,
           author_avatar: userProfile.avatar_url,
           content: content,
-          image_url: newPostImages[0] || null, // Store first image
+          image_url: newPostImages[0] || null,
           category: "General",
-          status: "pending", // Posts need approval
+          status: "approved", // Posts are published immediately
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      toast.success("Post submitted! It will be visible after approval.");
+      toast.success("Post published successfully!");
       setNewPostContent("");
       setNewPostImages([]);
       setSelectedFeeling(null);
@@ -500,6 +498,7 @@ export default function Articles() {
           user_id: session.user.id,
           author_name: userProfile.full_name,
           content: text,
+          status: "approved", // Comments are published immediately
         });
 
       if (error) throw error;
