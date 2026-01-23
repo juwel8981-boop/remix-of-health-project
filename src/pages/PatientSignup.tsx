@@ -65,62 +65,72 @@ export default function PatientSignup() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    const redirectUrl = `${window.location.origin}/patient`;
+    
+    try {
+      const redirectUrl = `${window.location.origin}/patient`;
 
-    // Sign up the user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: formData.fullName, role: 'patient' }
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: { full_name: formData.fullName, role: 'patient' }
+        }
+      });
+
+      if (authError) {
+        toast({
+          title: "Sign up failed",
+          description: authError.message.includes("already registered")
+            ? "This email is already registered. Please sign in instead."
+            : authError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
-    });
 
-    if (authError) {
+      if (authData.user) {
+        // Create patient profile
+        const { error: patientError } = await supabase.from("patients").insert({
+          user_id: authData.user.id,
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone || null,
+        });
+
+        if (patientError) {
+          console.error("Error creating patient profile:", patientError);
+        }
+
+        // Assign patient role (user role)
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: authData.user.id,
+          role: 'user',
+        });
+
+        if (roleError) {
+          console.error("Error assigning role:", roleError);
+        }
+
+        toast({
+          title: "Account created successfully!",
+          description: "Welcome to MedConnect. You can now access your dashboard.",
+        });
+
+        navigate("/patient");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
       toast({
         title: "Sign up failed",
-        description: authError.message.includes("already registered")
-          ? "This email is already registered. Please sign in instead."
-          : authError.message,
+        description: "Unable to connect to the server. Please check your internet connection and try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    if (authData.user) {
-      // Create patient profile
-      const { error: patientError } = await supabase.from("patients").insert({
-        user_id: authData.user.id,
-        full_name: formData.fullName,
-        email: formData.email,
-        phone: formData.phone || null,
-      });
-
-      if (patientError) {
-        console.error("Error creating patient profile:", patientError);
-      }
-
-      // Assign patient role (user role)
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: authData.user.id,
-        role: 'user',
-      });
-
-      if (roleError) {
-        console.error("Error assigning role:", roleError);
-      }
-
-      toast({
-        title: "Account created successfully!",
-        description: "Welcome to MedConnect. You can now access your dashboard.",
-      });
-
-      navigate("/patient");
-    }
-
-    setIsLoading(false);
   };
 
   return (
