@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
-  Heart, MessageCircle, Share2, Send, Image, X, MoreHorizontal,
-  ThumbsUp, Smile, Video, Globe, LogIn, Loader2
+  MessageCircle, Send, Image, X, MoreHorizontal,
+  ThumbsUp, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -22,7 +22,34 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
+
+// Reaction types
+const reactionTypes = [
+  { emoji: "👍", label: "Like", color: "text-primary" },
+  { emoji: "❤️", label: "Love", color: "text-red-500" },
+  { emoji: "😂", label: "Haha", color: "text-yellow-500" },
+  { emoji: "😮", label: "Wow", color: "text-yellow-500" },
+  { emoji: "😢", label: "Sad", color: "text-yellow-500" },
+  { emoji: "😡", label: "Angry", color: "text-orange-500" },
+];
 
 interface Comment {
   id: string;
@@ -30,8 +57,9 @@ interface Comment {
   authorImage: string;
   content: string;
   time: string;
-  likes: number;
-  liked: boolean;
+  userId: string;
+  reaction?: string;
+  reactions: Record<string, number>;
   replies: Reply[];
 }
 
@@ -41,8 +69,9 @@ interface Reply {
   authorImage: string;
   content: string;
   time: string;
-  likes: number;
-  liked: boolean;
+  userId: string;
+  reaction?: string;
+  reactions: Record<string, number>;
 }
 
 interface Post {
@@ -50,15 +79,22 @@ interface Post {
   author: string;
   authorRole: string;
   authorImage: string;
+  authorId: string;
   content: string;
   images: string[];
   category: string;
   time: string;
-  likes: number;
-  liked: boolean;
+  reaction?: string;
+  reactions: Record<string, number>;
   comments: Comment[];
   shares: number;
   feeling?: string;
+  originalPost?: {
+    id: string;
+    author: string;
+    authorImage: string;
+    content: string;
+  };
 }
 
 interface UserProfile {
@@ -111,6 +147,26 @@ export default function Articles() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [sharePost, setSharePostData] = useState<Post | null>(null);
+  const [shareThoughts, setShareThoughts] = useState("");
+  const [sharing, setSharing] = useState(false);
+
+  // Edit comment state
+  const [editCommentDialog, setEditCommentDialog] = useState<{
+    postId: string;
+    commentId: string;
+    content: string;
+  } | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+
+  // Delete comment state
+  const [deleteCommentDialog, setDeleteCommentDialog] = useState<{
+    postId: string;
+    commentId: string;
+  } | null>(null);
+
   const isAuthenticated = !!session;
 
   // Fetch session and user profile
@@ -119,7 +175,6 @@ export default function Articles() {
       async (event, session) => {
         setSession(session);
         if (session?.user) {
-          // Use setTimeout to defer profile fetch
           setTimeout(() => fetchUserProfile(session.user.id), 0);
         } else {
           setUserProfile(null);
@@ -146,7 +201,6 @@ export default function Articles() {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // First try to get from profiles
       const { data: profileData } = await supabase
         .from("profiles")
         .select("full_name, avatar_url")
@@ -161,7 +215,6 @@ export default function Articles() {
         return;
       }
 
-      // If not in profiles, check patients table
       const { data: patientData } = await supabase
         .from("patients")
         .select("full_name")
@@ -169,7 +222,6 @@ export default function Articles() {
         .single();
 
       if (patientData) {
-        // Get avatar from profiles anyway for consistency
         const { data: avatarData } = await supabase
           .from("profiles")
           .select("avatar_url")
@@ -183,7 +235,6 @@ export default function Articles() {
         return;
       }
 
-      // Check doctors table
       const { data: doctorData } = await supabase
         .from("doctors")
         .select("full_name")
@@ -209,7 +260,6 @@ export default function Articles() {
 
   const fetchPosts = async () => {
     try {
-      // Fetch all posts from health_posts table (no approval filter)
       const { data: postsData, error } = await supabase
         .from("health_posts")
         .select("*")
@@ -217,27 +267,26 @@ export default function Articles() {
 
       if (error) throw error;
 
-      // Fetch comments for each post
       const postsWithComments = await Promise.all(
         (postsData || []).map(async (post) => {
           const { data: commentsData } = await supabase
             .from("post_comments")
             .select("*")
             .eq("post_id", post.id)
+            .is("parent_id", null)
             .order("created_at", { ascending: true });
 
           const comments: Comment[] = (commentsData || []).map((c) => ({
             id: c.id,
             author: c.author_name,
-            authorImage: "", // We'll need to fetch this separately if needed
+            authorImage: "",
             content: c.content,
             time: formatDistanceToNow(new Date(c.created_at), { addSuffix: true }),
-            likes: 0,
-            liked: false,
+            userId: c.user_id,
+            reactions: {},
             replies: [],
           }));
 
-          // Parse content for feeling
           let feeling: string | undefined;
           let content = post.content;
           const feelingMatch = content.match(/\[feeling:([^\]]+)\]/);
@@ -246,20 +295,33 @@ export default function Articles() {
             content = content.replace(/\[feeling:[^\]]+\]\s*/, "");
           }
 
+          // Check for reshare
+          let originalPost: Post["originalPost"] | undefined;
+          const reshareMatch = content.match(/\[reshare:([^\]]+)\]/);
+          if (reshareMatch) {
+            try {
+              originalPost = JSON.parse(reshareMatch[1]);
+              content = content.replace(/\[reshare:[^\]]+\]\s*/, "");
+            } catch (e) {
+              console.error("Error parsing reshare data:", e);
+            }
+          }
+
           return {
             id: post.id,
             author: post.author_name,
             authorRole: "Community Member",
             authorImage: post.author_avatar || "",
+            authorId: post.user_id,
             content: content,
             images: post.image_url ? [post.image_url] : [],
             category: post.category || "General",
             time: formatDistanceToNow(new Date(post.created_at), { addSuffix: true }),
-            likes: post.likes_count || 0,
-            liked: false,
+            reactions: {},
             shares: 0,
             comments,
             feeling,
+            originalPost,
           };
         })
       );
@@ -295,13 +357,12 @@ export default function Articles() {
 
     setPosting(true);
     try {
-      // Include feeling in content if selected
       let content = newPostContent;
       if (selectedFeeling) {
         content = `[feeling:${selectedFeeling}] ${content}`;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("health_posts")
         .insert({
           user_id: session.user.id,
@@ -310,10 +371,8 @@ export default function Articles() {
           content: content,
           image_url: newPostImages[0] || null,
           category: "General",
-          status: "approved", // Posts are published immediately
-        })
-        .select()
-        .single();
+          status: "approved",
+        });
 
       if (error) throw error;
 
@@ -321,8 +380,6 @@ export default function Articles() {
       setNewPostContent("");
       setNewPostImages([]);
       setSelectedFeeling(null);
-      
-      // Refresh posts
       fetchPosts();
     } catch (error) {
       console.error("Error creating post:", error);
@@ -338,13 +395,11 @@ export default function Articles() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image size should be less than 5MB");
       return;
@@ -361,7 +416,6 @@ export default function Articles() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("health-posts")
         .getPublicUrl(fileName);
@@ -373,7 +427,6 @@ export default function Articles() {
       toast.error("Failed to upload image");
     } finally {
       setUploading(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -386,13 +439,11 @@ export default function Articles() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("video/")) {
       toast.error("Please select a video file");
       return;
     }
 
-    // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
       toast.error("Video size should be less than 50MB");
       return;
@@ -409,7 +460,6 @@ export default function Articles() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("health-posts")
         .getPublicUrl(fileName);
@@ -431,51 +481,77 @@ export default function Articles() {
     setNewPostImages(newPostImages.filter((_, i) => i !== index));
   };
 
-  const toggleLike = async (postId: string) => {
-    if (!requireAuth("like posts")) return;
-    
-    // Optimistic update
+  // React to post with emoji
+  const reactToPost = async (postId: string, emoji: string) => {
+    if (!requireAuth("react to posts")) return;
+
     setPosts(posts.map(post => {
       if (post.id === postId) {
-        const newLiked = !post.liked;
-        return {
-          ...post,
-          liked: newLiked,
-          likes: newLiked ? post.likes + 1 : post.likes - 1,
-        };
+        const currentReaction = post.reaction;
+        const newReactions = { ...post.reactions };
+
+        // Remove previous reaction
+        if (currentReaction && newReactions[currentReaction]) {
+          newReactions[currentReaction]--;
+          if (newReactions[currentReaction] <= 0) {
+            delete newReactions[currentReaction];
+          }
+        }
+
+        // Add new reaction if different
+        if (currentReaction !== emoji) {
+          newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+          return { ...post, reaction: emoji, reactions: newReactions };
+        } else {
+          return { ...post, reaction: undefined, reactions: newReactions };
+        }
       }
       return post;
     }));
 
-    // Update in database
+    // Update likes_count in database
     try {
       const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      const newLikesCount = post.liked ? post.likes - 1 : post.likes + 1;
+      const totalReactions = Object.values(post.reactions).reduce((a, b) => a + b, 0);
+      const newCount = post.reaction === emoji ? totalReactions - 1 : totalReactions + 1;
       
       await supabase
         .from("health_posts")
-        .update({ likes_count: newLikesCount })
+        .update({ likes_count: Math.max(0, newCount) })
         .eq("id", postId);
     } catch (error) {
-      console.error("Error updating like:", error);
+      console.error("Error updating reaction:", error);
     }
   };
 
-  const toggleCommentLike = (postId: string, commentId: string) => {
-    if (!requireAuth("like comments")) return;
+  // React to comment
+  const reactToComment = (postId: string, commentId: string, emoji: string) => {
+    if (!requireAuth("react to comments")) return;
+
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return {
           ...post,
           comments: post.comments.map(comment => {
             if (comment.id === commentId) {
-              return {
-                ...comment,
-                liked: !comment.liked,
-                likes: comment.liked ? comment.likes - 1 : comment.likes + 1,
-              };
+              const currentReaction = comment.reaction;
+              const newReactions = { ...comment.reactions };
+
+              if (currentReaction && newReactions[currentReaction]) {
+                newReactions[currentReaction]--;
+                if (newReactions[currentReaction] <= 0) {
+                  delete newReactions[currentReaction];
+                }
+              }
+
+              if (currentReaction !== emoji) {
+                newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+                return { ...comment, reaction: emoji, reactions: newReactions };
+              } else {
+                return { ...comment, reaction: undefined, reactions: newReactions };
+              }
             }
             return comment;
           }),
@@ -491,43 +567,40 @@ export default function Articles() {
     if (!text?.trim() || !session?.user || !userProfile) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("post_comments")
         .insert({
           post_id: postId,
           user_id: session.user.id,
           author_name: userProfile.full_name,
           content: text,
-          status: "approved", // Comments are published immediately
-        });
+          status: "approved",
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Optimistically add comment to UI
       const newComment: Comment = {
-        id: Date.now().toString(),
+        id: data.id,
         author: userProfile.full_name,
         authorImage: userProfile.avatar_url || "",
         content: text,
         time: "Just now",
-        likes: 0,
-        liked: false,
+        userId: session.user.id,
+        reactions: {},
         replies: [],
       };
 
       setPosts(posts.map(post => {
         if (post.id === postId) {
-          return {
-            ...post,
-            comments: [...post.comments, newComment],
-          };
+          return { ...post, comments: [...post.comments, newComment] };
         }
         return post;
       }));
 
       setCommentText({ ...commentText, [postId]: "" });
 
-      // Update comments count
       const post = posts.find(p => p.id === postId);
       if (post) {
         await supabase
@@ -553,8 +626,8 @@ export default function Articles() {
       authorImage: userProfile.avatar_url || "",
       content: replyText,
       time: "Just now",
-      likes: 0,
-      liked: false,
+      userId: session?.user?.id || "",
+      reactions: {},
     };
 
     setPosts(posts.map(post => {
@@ -563,10 +636,7 @@ export default function Articles() {
           ...post,
           comments: post.comments.map(comment => {
             if (comment.id === commentId) {
-              return {
-                ...comment,
-                replies: [...comment.replies, newReply],
-              };
+              return { ...comment, replies: [...comment.replies, newReply] };
             }
             return comment;
           }),
@@ -579,25 +649,148 @@ export default function Articles() {
     setReplyText("");
   };
 
-  const sharePost = async (postId: string) => {
+  // Edit comment
+  const handleEditComment = async () => {
+    if (!editCommentDialog || !editCommentText.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from("post_comments")
+        .update({ content: editCommentText })
+        .eq("id", editCommentDialog.commentId);
+
+      if (error) throw error;
+
+      setPosts(posts.map(post => {
+        if (post.id === editCommentDialog.postId) {
+          return {
+            ...post,
+            comments: post.comments.map(comment => {
+              if (comment.id === editCommentDialog.commentId) {
+                return { ...comment, content: editCommentText };
+              }
+              return comment;
+            }),
+          };
+        }
+        return post;
+      }));
+
+      toast.success("Comment updated!");
+      setEditCommentDialog(null);
+      setEditCommentText("");
+    } catch (error) {
+      console.error("Error editing comment:", error);
+      toast.error("Failed to update comment");
+    }
+  };
+
+  // Delete comment
+  const handleDeleteComment = async () => {
+    if (!deleteCommentDialog) return;
+
+    try {
+      const { error } = await supabase
+        .from("post_comments")
+        .delete()
+        .eq("id", deleteCommentDialog.commentId);
+
+      if (error) throw error;
+
+      setPosts(posts.map(post => {
+        if (post.id === deleteCommentDialog.postId) {
+          return {
+            ...post,
+            comments: post.comments.filter(c => c.id !== deleteCommentDialog.commentId),
+          };
+        }
+        return post;
+      }));
+
+      // Update comments count
+      const post = posts.find(p => p.id === deleteCommentDialog.postId);
+      if (post) {
+        await supabase
+          .from("health_posts")
+          .update({ comments_count: Math.max(0, post.comments.length - 1) })
+          .eq("id", deleteCommentDialog.postId);
+      }
+
+      toast.success("Comment deleted!");
+      setDeleteCommentDialog(null);
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
+    }
+  };
+
+  // Share post with thoughts
+  const openShareDialog = (post: Post) => {
     if (!requireAuth("share posts")) return;
-    
-    // Copy link to clipboard
+    setSharePostData(post);
+    setShareThoughts("");
+    setShareDialogOpen(true);
+  };
+
+  const handleSharePost = async () => {
+    if (!sharePost || !session?.user || !userProfile) return;
+
+    setSharing(true);
+    try {
+      const originalPostData = JSON.stringify({
+        id: sharePost.id,
+        author: sharePost.author,
+        authorImage: sharePost.authorImage,
+        content: sharePost.content.substring(0, 200),
+      });
+
+      const content = `[reshare:${originalPostData}] ${shareThoughts}`;
+
+      const { error } = await supabase
+        .from("health_posts")
+        .insert({
+          user_id: session.user.id,
+          author_name: userProfile.full_name,
+          author_avatar: userProfile.avatar_url,
+          content: content,
+          category: sharePost.category,
+          status: "approved",
+        });
+
+      if (error) throw error;
+
+      toast.success("Post shared successfully!");
+      setShareDialogOpen(false);
+      setSharePostData(null);
+      setShareThoughts("");
+      fetchPosts();
+    } catch (error) {
+      console.error("Error sharing post:", error);
+      toast.error("Failed to share post");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const copyPostLink = async (postId: string) => {
     const url = `${window.location.origin}/health-feed/${postId}`;
     await navigator.clipboard.writeText(url);
-    
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return { ...post, shares: post.shares + 1 };
-      }
-      return post;
-    }));
-    
     toast.success("Link copied to clipboard!");
   };
 
   const currentUserImage = userProfile?.avatar_url || "";
   const currentUserName = userProfile?.full_name || "User";
+
+  const getTotalReactions = (reactions: Record<string, number>) => {
+    return Object.values(reactions).reduce((a, b) => a + b, 0);
+  };
+
+  const getTopReactions = (reactions: Record<string, number>) => {
+    return Object.entries(reactions)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([emoji]) => emoji);
+  };
 
   return (
     <div className="min-h-screen bg-muted/50">
@@ -616,6 +809,93 @@ export default function Articles() {
         className="hidden"
         onChange={handleVideoUpload}
       />
+
+      {/* Share Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Share Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Add your thoughts..."
+              value={shareThoughts}
+              onChange={(e) => setShareThoughts(e.target.value)}
+              className="min-h-[80px]"
+            />
+            {sharePost && (
+              <div className="border border-border rounded-lg p-3 bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={sharePost.authorImage} />
+                    <AvatarFallback>{sharePost.author[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{sharePost.author}</span>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {sharePost.content}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSharePost} disabled={sharing}>
+              {sharing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <Repeat2 className="w-4 h-4 mr-2" />
+                  Share
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Comment Dialog */}
+      <Dialog open={!!editCommentDialog} onOpenChange={() => setEditCommentDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Comment</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editCommentText}
+            onChange={(e) => setEditCommentText(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCommentDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditComment}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Comment Dialog */}
+      <AlertDialog open={!!deleteCommentDialog} onOpenChange={() => setDeleteCommentDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Comment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your comment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteComment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Header */}
       <section className="bg-gradient-to-br from-primary to-secondary py-8">
@@ -672,7 +952,6 @@ export default function Articles() {
                   <AvatarFallback>{currentUserName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  {/* Feeling indicator */}
                   {selectedFeeling && (
                     <div className="mb-2 flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
@@ -696,22 +975,14 @@ export default function Articles() {
                     className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
                   />
                   
-                  {/* Image/Video Preview */}
                   {newPostImages.length > 0 && (
                     <div className="flex gap-2 mt-3 flex-wrap">
                       {newPostImages.map((media, index) => (
                         <div key={index} className="relative">
                           {media.includes(".mp4") || media.includes(".webm") || media.includes(".mov") ? (
-                            <video
-                              src={media}
-                              className="w-24 h-24 object-cover rounded-lg"
-                            />
+                            <video src={media} className="w-24 h-24 object-cover rounded-lg" />
                           ) : (
-                            <img
-                              src={media}
-                              alt="Upload preview"
-                              className="w-24 h-24 object-cover rounded-lg"
-                            />
+                            <img src={media} alt="Upload preview" className="w-24 h-24 object-cover rounded-lg" />
                           )}
                           <button
                             onClick={() => removeImage(index)}
@@ -724,7 +995,6 @@ export default function Articles() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                     <div className="flex items-center gap-1">
                       <Button
@@ -734,11 +1004,7 @@ export default function Articles() {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
                       >
-                        {uploading ? (
-                          <Loader2 className="w-5 h-5 mr-1 animate-spin" />
-                        ) : (
-                          <Image className="w-5 h-5 mr-1" />
-                        )}
+                        {uploading ? <Loader2 className="w-5 h-5 mr-1 animate-spin" /> : <Image className="w-5 h-5 mr-1" />}
                         Photo
                       </Button>
                       <Button
@@ -756,9 +1022,7 @@ export default function Articles() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`text-muted-foreground hover:text-primary ${
-                              selectedFeeling ? "text-primary" : ""
-                            }`}
+                            className={`text-muted-foreground hover:text-primary ${selectedFeeling ? "text-primary" : ""}`}
                           >
                             <Smile className="w-5 h-5 mr-1" />
                             Feeling
@@ -817,7 +1081,6 @@ export default function Articles() {
             </motion.div>
           )}
 
-          {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -847,14 +1110,7 @@ export default function Articles() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-foreground">{post.author}</h3>
                           {post.feeling && (
-                            <span className="text-sm text-muted-foreground">
-                              is feeling {post.feeling}
-                            </span>
-                          )}
-                          {post.authorRole !== "Community Member" && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {post.authorRole}
-                            </span>
+                            <span className="text-sm text-muted-foreground">is feeling {post.feeling}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -872,6 +1128,7 @@ export default function Articles() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => copyPostLink(post.id)}>Copy link</DropdownMenuItem>
                         <DropdownMenuItem>Save post</DropdownMenuItem>
                         <DropdownMenuItem>Hide post</DropdownMenuItem>
                         <DropdownMenuItem>Report</DropdownMenuItem>
@@ -883,6 +1140,20 @@ export default function Articles() {
                   <div className="mt-3">
                     <p className="text-foreground whitespace-pre-wrap">{post.content}</p>
                   </div>
+
+                  {/* Reshared Post */}
+                  {post.originalPost && (
+                    <div className="mt-3 border border-border rounded-lg p-3 bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Avatar className="w-6 h-6">
+                          <AvatarImage src={post.originalPost.authorImage} />
+                          <AvatarFallback>{post.originalPost.author[0]}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{post.originalPost.author}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{post.originalPost.content}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Post Images/Videos */}
@@ -890,19 +1161,9 @@ export default function Articles() {
                   <div className={`grid ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-0.5`}>
                     {post.images.map((media, imgIndex) => (
                       media.includes(".mp4") || media.includes(".webm") || media.includes(".mov") ? (
-                        <video
-                          key={imgIndex}
-                          src={media}
-                          controls
-                          className="w-full h-64 object-cover"
-                        />
+                        <video key={imgIndex} src={media} controls className="w-full h-64 object-cover" />
                       ) : (
-                        <img
-                          key={imgIndex}
-                          src={media}
-                          alt={`Post image ${imgIndex + 1}`}
-                          className="w-full h-64 object-cover"
-                        />
+                        <img key={imgIndex} src={media} alt={`Post image ${imgIndex + 1}`} className="w-full h-64 object-cover" />
                       )
                     ))}
                   </div>
@@ -911,10 +1172,23 @@ export default function Articles() {
                 {/* Engagement Stats */}
                 <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border">
                   <div className="flex items-center gap-1">
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <ThumbsUp className="w-3 h-3 text-primary-foreground" />
-                    </div>
-                    <span>{post.likes}</span>
+                    {getTopReactions(post.reactions).length > 0 ? (
+                      <>
+                        <div className="flex -space-x-1">
+                          {getTopReactions(post.reactions).map((emoji, i) => (
+                            <span key={i} className="text-sm">{emoji}</span>
+                          ))}
+                        </div>
+                        <span>{getTotalReactions(post.reactions)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <ThumbsUp className="w-3 h-3 text-primary-foreground" />
+                        </div>
+                        <span>0</span>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-4">
                     <button
@@ -927,16 +1201,39 @@ export default function Articles() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons with Reactions */}
                 <div className="px-4 py-1 flex items-center justify-around border-b border-border">
-                  <Button
-                    variant="ghost"
-                    className={`flex-1 gap-2 ${post.liked ? "text-primary" : "text-muted-foreground"}`}
-                    onClick={() => toggleLike(post.id)}
-                  >
-                    <ThumbsUp className={`w-5 h-5 ${post.liked ? "fill-primary" : ""}`} />
-                    Like
-                  </Button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className={`flex-1 gap-2 ${post.reaction ? reactionTypes.find(r => r.emoji === post.reaction)?.color || "text-primary" : "text-muted-foreground"}`}
+                      >
+                        {post.reaction ? (
+                          <span className="text-lg">{post.reaction}</span>
+                        ) : (
+                          <ThumbsUp className="w-5 h-5" />
+                        )}
+                        {post.reaction ? reactionTypes.find(r => r.emoji === post.reaction)?.label || "Like" : "Like"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2" side="top">
+                      <div className="flex gap-1">
+                        {reactionTypes.map((reaction) => (
+                          <button
+                            key={reaction.label}
+                            onClick={() => reactToPost(post.id, reaction.emoji)}
+                            className={`text-2xl p-2 rounded-full hover:bg-muted transition-transform hover:scale-125 ${
+                              post.reaction === reaction.emoji ? "bg-muted" : ""
+                            }`}
+                            title={reaction.label}
+                          >
+                            {reaction.emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   <Button
                     variant="ghost"
                     className="flex-1 gap-2 text-muted-foreground"
@@ -948,9 +1245,9 @@ export default function Articles() {
                   <Button
                     variant="ghost"
                     className="flex-1 gap-2 text-muted-foreground"
-                    onClick={() => sharePost(post.id)}
+                    onClick={() => openShareDialog(post)}
                   >
-                    <Share2 className="w-5 h-5" />
+                    <Repeat2 className="w-5 h-5" />
                     Share
                   </Button>
                 </div>
@@ -1000,17 +1297,78 @@ export default function Articles() {
                                 <AvatarFallback>{comment.author[0]}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
-                                <div className="bg-muted rounded-2xl px-3 py-2">
-                                  <p className="font-semibold text-sm text-foreground">{comment.author}</p>
+                                <div className="bg-muted rounded-2xl px-3 py-2 relative group">
+                                  <div className="flex items-center justify-between">
+                                    <p className="font-semibold text-sm text-foreground">{comment.author}</p>
+                                    {session?.user?.id === comment.userId && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          >
+                                            <MoreHorizontal className="w-4 h-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setEditCommentDialog({
+                                                postId: post.id,
+                                                commentId: comment.id,
+                                                content: comment.content,
+                                              });
+                                              setEditCommentText(comment.content);
+                                            }}
+                                          >
+                                            <Edit2 className="w-4 h-4 mr-2" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={() => setDeleteCommentDialog({
+                                              postId: post.id,
+                                              commentId: comment.id,
+                                            })}
+                                          >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+                                  </div>
                                   <p className="text-sm text-foreground">{comment.content}</p>
                                 </div>
                                 <div className="flex items-center gap-4 mt-1 ml-2 text-xs">
-                                  <button
-                                    onClick={() => toggleCommentLike(post.id, comment.id)}
-                                    className={`font-semibold hover:underline ${comment.liked ? "text-primary" : "text-muted-foreground"}`}
-                                  >
-                                    Like {comment.likes > 0 && `(${comment.likes})`}
-                                  </button>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        className={`font-semibold hover:underline ${
+                                          comment.reaction ? reactionTypes.find(r => r.emoji === comment.reaction)?.color || "text-primary" : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {comment.reaction || "Like"} {getTotalReactions(comment.reactions) > 0 && `(${getTotalReactions(comment.reactions)})`}
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-1" side="top">
+                                      <div className="flex gap-0.5">
+                                        {reactionTypes.map((reaction) => (
+                                          <button
+                                            key={reaction.label}
+                                            onClick={() => reactToComment(post.id, comment.id, reaction.emoji)}
+                                            className={`text-lg p-1.5 rounded-full hover:bg-muted transition-transform hover:scale-110 ${
+                                              comment.reaction === reaction.emoji ? "bg-muted" : ""
+                                            }`}
+                                            title={reaction.label}
+                                          >
+                                            {reaction.emoji}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
                                   <button
                                     onClick={() => setReplyTo({ postId: post.id, commentId: comment.id })}
                                     className="font-semibold text-muted-foreground hover:underline"
