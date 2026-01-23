@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   Heart, MessageCircle, Share2, Send, Image, X, MoreHorizontal,
-  ThumbsUp, Smile, Camera, Video, MapPin, Users, Globe, ChevronDown, LogIn
+  ThumbsUp, Smile, Video, Globe, LogIn, Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -17,9 +17,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { formatDistanceToNow } from "date-fns";
 
 interface Comment {
-  id: number;
+  id: string;
   author: string;
   authorImage: string;
   content: string;
@@ -30,7 +36,7 @@ interface Comment {
 }
 
 interface Reply {
-  id: number;
+  id: string;
   author: string;
   authorImage: string;
   content: string;
@@ -40,7 +46,7 @@ interface Reply {
 }
 
 interface Post {
-  id: number;
+  id: string;
   author: string;
   authorRole: string;
   authorImage: string;
@@ -52,6 +58,12 @@ interface Post {
   liked: boolean;
   comments: Comment[];
   shares: number;
+  feeling?: string;
+}
+
+interface UserProfile {
+  full_name: string;
+  avatar_url: string | null;
 }
 
 const categories = [
@@ -64,159 +76,202 @@ const categories = [
   "Child Care",
   "Diabetes",
   "COVID-19",
+  "General",
 ];
 
-const initialPosts: Post[] = [
-  {
-    id: 1,
-    author: "Dr. Sarah Ahmed",
-    authorRole: "Cardiologist",
-    authorImage: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face",
-    content: "🫀 10 Ways to Improve Your Heart Health Naturally\n\nDiscover simple lifestyle changes that can significantly reduce your risk of heart disease:\n\n1. Exercise regularly (at least 30 mins/day)\n2. Eat a heart-healthy diet\n3. Maintain a healthy weight\n4. Quit smoking\n5. Limit alcohol consumption\n\nRemember, small changes lead to big results! What's your favorite heart-healthy habit?",
-    images: ["https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=800&h=500&fit=crop"],
-    category: "Heart Health",
-    time: "2 hours ago",
-    likes: 234,
-    liked: false,
-    shares: 45,
-    comments: [
-      {
-        id: 1,
-        author: "Rahim Ahmed",
-        authorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
-        content: "Great tips! I started walking 30 minutes daily and my blood pressure has improved significantly.",
-        time: "1 hour ago",
-        likes: 12,
-        liked: false,
-        replies: [
-          {
-            id: 1,
-            author: "Dr. Sarah Ahmed",
-            authorImage: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face",
-            content: "That's wonderful to hear! Consistency is key. Keep up the great work! 💪",
-            time: "45 mins ago",
-            likes: 5,
-            liked: false,
-          }
-        ]
-      },
-      {
-        id: 2,
-        author: "Fatima Begum",
-        authorImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-        content: "Can you recommend some specific heart-healthy foods?",
-        time: "30 mins ago",
-        likes: 8,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
-  {
-    id: 2,
-    author: "Dr. Nasreen Akter",
-    authorRole: "Psychiatrist",
-    authorImage: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?w=100&h=100&fit=crop&crop=face",
-    content: "🧠 Understanding Anxiety: You're Not Alone\n\nAnxiety affects millions of people worldwide. If you're feeling overwhelmed, here are some immediate coping strategies:\n\n• Practice deep breathing (4-7-8 technique)\n• Ground yourself with the 5-4-3-2-1 method\n• Talk to someone you trust\n• Limit caffeine and sugar\n• Get adequate sleep\n\nRemember: Seeking help is a sign of strength, not weakness. 💙",
-    images: ["https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=800&h=500&fit=crop"],
-    category: "Mental Health",
-    time: "5 hours ago",
-    likes: 189,
-    liked: false,
-    shares: 78,
-    comments: [
-      {
-        id: 1,
-        author: "Karim Hassan",
-        authorImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-        content: "The 5-4-3-2-1 grounding technique has been life-changing for me. Thank you for spreading awareness!",
-        time: "4 hours ago",
-        likes: 23,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
-  {
-    id: 3,
-    author: "Dr. Kamal Hossain",
-    authorRole: "Nutritionist",
-    authorImage: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&h=100&fit=crop&crop=face",
-    content: "🥗 Quick Healthy Meal Prep Ideas!\n\nBusy week ahead? Here are 5 nutritious meals you can prep in under 30 minutes:\n\n1. Overnight oats with fruits\n2. Grilled chicken with roasted vegetables\n3. Lentil soup with whole grain bread\n4. Quinoa salad with chickpeas\n5. Stir-fried tofu with brown rice\n\nShare your favorite healthy meal prep ideas below! 👇",
-    images: [
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=500&fit=crop"
-    ],
-    category: "Nutrition",
-    time: "1 day ago",
-    likes: 156,
-    liked: false,
-    shares: 34,
-    comments: [],
-  },
-  {
-    id: 4,
-    author: "Dr. Fatima Khan",
-    authorRole: "Pediatrician",
-    authorImage: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop&crop=face",
-    content: "👶 Vaccination Schedule Reminder for Parents!\n\nKeeping your child's vaccinations up to date is crucial for their health and the community. Don't skip or delay scheduled vaccines!\n\nIf you have any concerns about vaccines, please consult with your pediatrician. We're here to answer all your questions with evidence-based information.\n\n#ChildHealth #Vaccination #HealthyKids",
-    images: [],
-    category: "Child Care",
-    time: "2 days ago",
-    likes: 198,
-    liked: false,
-    shares: 89,
-    comments: [
-      {
-        id: 1,
-        author: "Nusrat Jahan",
-        authorImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&crop=face",
-        content: "My baby just completed her 6-month vaccines. So relieved! Thank you for the reminder, Doctor.",
-        time: "1 day ago",
-        likes: 15,
-        liked: false,
-        replies: []
-      }
-    ],
-  },
+const feelings = [
+  { emoji: "😊", label: "Happy" },
+  { emoji: "💪", label: "Motivated" },
+  { emoji: "🤒", label: "Sick" },
+  { emoji: "😴", label: "Tired" },
+  { emoji: "🧘", label: "Relaxed" },
+  { emoji: "💖", label: "Grateful" },
+  { emoji: "🏃", label: "Energetic" },
+  { emoji: "🤔", label: "Curious" },
+  { emoji: "😰", label: "Anxious" },
+  { emoji: "🎉", label: "Celebrating" },
 ];
-
-const currentUser = {
-  name: "You",
-  image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
-};
 
 export default function Articles() {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostImages, setNewPostImages] = useState<string[]>([]);
-  const [showComments, setShowComments] = useState<Record<number, boolean>>({});
-  const [commentText, setCommentText] = useState<Record<number, string>>({});
-  const [replyTo, setReplyTo] = useState<{ postId: number; commentId: number } | null>(null);
+  const [selectedFeeling, setSelectedFeeling] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState<Record<string, boolean>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [replyTo, setReplyTo] = useState<{ postId: string; commentId: string } | null>(null);
   const [replyText, setReplyText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const navigate = useNavigate();
 
   const isAuthenticated = !!session;
 
+  // Fetch session and user profile
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
+        if (session?.user) {
+          // Use setTimeout to defer profile fetch
+          setTimeout(() => fetchUserProfile(session.user.id), 0);
+        } else {
+          setUserProfile(null);
+        }
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch posts from database
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      // First try to get from profiles
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", userId)
+        .single();
+
+      if (profileData) {
+        setUserProfile({
+          full_name: profileData.full_name || "User",
+          avatar_url: profileData.avatar_url
+        });
+        return;
+      }
+
+      // If not in profiles, check patients table
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("full_name")
+        .eq("user_id", userId)
+        .single();
+
+      if (patientData) {
+        // Get avatar from profiles anyway for consistency
+        const { data: avatarData } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", userId)
+          .single();
+        
+        setUserProfile({
+          full_name: patientData.full_name,
+          avatar_url: avatarData?.avatar_url || null
+        });
+        return;
+      }
+
+      // Check doctors table
+      const { data: doctorData } = await supabase
+        .from("doctors")
+        .select("full_name")
+        .eq("user_id", userId)
+        .single();
+
+      if (doctorData) {
+        const { data: avatarData } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", userId)
+          .single();
+        
+        setUserProfile({
+          full_name: doctorData.full_name,
+          avatar_url: avatarData?.avatar_url || null
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      // Fetch approved posts from health_posts table
+      const { data: postsData, error } = await supabase
+        .from("health_posts")
+        .select("*")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch comments for each post
+      const postsWithComments = await Promise.all(
+        (postsData || []).map(async (post) => {
+          const { data: commentsData } = await supabase
+            .from("post_comments")
+            .select("*")
+            .eq("post_id", post.id)
+            .eq("status", "approved")
+            .order("created_at", { ascending: true });
+
+          const comments: Comment[] = (commentsData || []).map((c) => ({
+            id: c.id,
+            author: c.author_name,
+            authorImage: "", // We'll need to fetch this separately if needed
+            content: c.content,
+            time: formatDistanceToNow(new Date(c.created_at), { addSuffix: true }),
+            likes: 0,
+            liked: false,
+            replies: [],
+          }));
+
+          // Parse content for feeling
+          let feeling: string | undefined;
+          let content = post.content;
+          const feelingMatch = content.match(/\[feeling:([^\]]+)\]/);
+          if (feelingMatch) {
+            feeling = feelingMatch[1];
+            content = content.replace(/\[feeling:[^\]]+\]\s*/, "");
+          }
+
+          return {
+            id: post.id,
+            author: post.author_name,
+            authorRole: "Community Member",
+            authorImage: post.author_avatar || "",
+            content: content,
+            images: post.image_url ? [post.image_url] : [],
+            category: post.category || "General",
+            time: formatDistanceToNow(new Date(post.created_at), { addSuffix: true }),
+            likes: post.likes_count || 0,
+            liked: false,
+            shares: 0,
+            comments,
+            feeling,
+          };
+        })
+      );
+
+      setPosts(postsWithComments);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Failed to load posts");
+    }
+  };
 
   const requireAuth = (action: string) => {
     if (!isAuthenticated) {
@@ -235,59 +290,182 @@ export default function Articles() {
     return selectedCategory === "All" || post.category === selectedCategory;
   });
 
-  const handleCreatePost = () => {
+  const handleCreatePost = async () => {
     if (!requireAuth("create posts")) return;
     if (!newPostContent.trim() && newPostImages.length === 0) return;
+    if (!session?.user || !userProfile) return;
 
-    const newPost: Post = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorRole: "Community Member",
-      authorImage: currentUser.image,
-      content: newPostContent,
-      images: newPostImages,
-      category: "General",
-      time: "Just now",
-      likes: 0,
-      liked: false,
-      shares: 0,
-      comments: [],
-    };
+    setPosting(true);
+    try {
+      // Include feeling in content if selected
+      let content = newPostContent;
+      if (selectedFeeling) {
+        content = `[feeling:${selectedFeeling}] ${content}`;
+      }
 
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
-    setNewPostImages([]);
+      const { data, error } = await supabase
+        .from("health_posts")
+        .insert({
+          user_id: session.user.id,
+          author_name: userProfile.full_name,
+          author_avatar: userProfile.avatar_url,
+          content: content,
+          image_url: newPostImages[0] || null, // Store first image
+          category: "General",
+          status: "pending", // Posts need approval
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success("Post submitted! It will be visible after approval.");
+      setNewPostContent("");
+      setNewPostImages([]);
+      setSelectedFeeling(null);
+      
+      // Refresh posts
+      fetchPosts();
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create post");
+    } finally {
+      setPosting(false);
+    }
   };
 
-  const handleImageUpload = () => {
-    // Simulate image upload with sample images
-    const sampleImages = [
-      "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800&h=500&fit=crop",
-    ];
-    const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-    setNewPostImages([...newPostImages, randomImage]);
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!requireAuth("upload images")) return;
+    
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session?.user?.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("health-posts")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("health-posts")
+        .getPublicUrl(fileName);
+
+      setNewPostImages([...newPostImages, publicUrl]);
+      toast.success("Image uploaded!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!requireAuth("upload videos")) return;
+    
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("video/")) {
+      toast.error("Please select a video file");
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Video size should be less than 50MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session?.user?.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("health-posts")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("health-posts")
+        .getPublicUrl(fileName);
+
+      setNewPostImages([...newPostImages, publicUrl]);
+      toast.success("Video uploaded!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload video");
+    } finally {
+      setUploading(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = "";
+      }
+    }
   };
 
   const removeImage = (index: number) => {
     setNewPostImages(newPostImages.filter((_, i) => i !== index));
   };
 
-  const toggleLike = (postId: number) => {
+  const toggleLike = async (postId: string) => {
     if (!requireAuth("like posts")) return;
+    
+    // Optimistic update
     setPosts(posts.map(post => {
       if (post.id === postId) {
+        const newLiked = !post.liked;
         return {
           ...post,
-          liked: !post.liked,
-          likes: post.liked ? post.likes - 1 : post.likes + 1,
+          liked: newLiked,
+          likes: newLiked ? post.likes + 1 : post.likes - 1,
         };
       }
       return post;
     }));
+
+    // Update in database
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      const newLikesCount = post.liked ? post.likes - 1 : post.likes + 1;
+      
+      await supabase
+        .from("health_posts")
+        .update({ likes_count: newLikesCount })
+        .eq("id", postId);
+    } catch (error) {
+      console.error("Error updating like:", error);
+    }
   };
 
-  const toggleCommentLike = (postId: number, commentId: number) => {
+  const toggleCommentLike = (postId: string, commentId: string) => {
     if (!requireAuth("like comments")) return;
     setPosts(posts.map(post => {
       if (post.id === postId) {
@@ -309,43 +487,71 @@ export default function Articles() {
     }));
   };
 
-  const addComment = (postId: number) => {
+  const addComment = async (postId: string) => {
     if (!requireAuth("comment on posts")) return;
     const text = commentText[postId];
-    if (!text?.trim()) return;
+    if (!text?.trim() || !session?.user || !userProfile) return;
 
-    const newComment: Comment = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorImage: currentUser.image,
-      content: text,
-      time: "Just now",
-      likes: 0,
-      liked: false,
-      replies: [],
-    };
+    try {
+      const { error } = await supabase
+        .from("post_comments")
+        .insert({
+          post_id: postId,
+          user_id: session.user.id,
+          author_name: userProfile.full_name,
+          content: text,
+        });
 
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: [...post.comments, newComment],
-        };
+      if (error) throw error;
+
+      // Optimistically add comment to UI
+      const newComment: Comment = {
+        id: Date.now().toString(),
+        author: userProfile.full_name,
+        authorImage: userProfile.avatar_url || "",
+        content: text,
+        time: "Just now",
+        likes: 0,
+        liked: false,
+        replies: [],
+      };
+
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: [...post.comments, newComment],
+          };
+        }
+        return post;
+      }));
+
+      setCommentText({ ...commentText, [postId]: "" });
+
+      // Update comments count
+      const post = posts.find(p => p.id === postId);
+      if (post) {
+        await supabase
+          .from("health_posts")
+          .update({ comments_count: post.comments.length + 1 })
+          .eq("id", postId);
       }
-      return post;
-    }));
 
-    setCommentText({ ...commentText, [postId]: "" });
+      toast.success("Comment added!");
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment");
+    }
   };
 
-  const addReply = (postId: number, commentId: number) => {
+  const addReply = (postId: string, commentId: string) => {
     if (!requireAuth("reply to comments")) return;
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || !userProfile) return;
 
     const newReply: Reply = {
-      id: Date.now(),
-      author: currentUser.name,
-      authorImage: currentUser.image,
+      id: Date.now().toString(),
+      author: userProfile.full_name,
+      authorImage: userProfile.avatar_url || "",
       content: replyText,
       time: "Just now",
       likes: 0,
@@ -374,19 +580,44 @@ export default function Articles() {
     setReplyText("");
   };
 
-  const sharePost = (postId: number) => {
+  const sharePost = async (postId: string) => {
     if (!requireAuth("share posts")) return;
+    
+    // Copy link to clipboard
+    const url = `${window.location.origin}/health-feed/${postId}`;
+    await navigator.clipboard.writeText(url);
+    
     setPosts(posts.map(post => {
       if (post.id === postId) {
         return { ...post, shares: post.shares + 1 };
       }
       return post;
     }));
-    // Could add toast notification here
+    
+    toast.success("Link copied to clipboard!");
   };
+
+  const currentUserImage = userProfile?.avatar_url || "";
+  const currentUserName = userProfile?.full_name || "User";
 
   return (
     <div className="min-h-screen bg-muted/50">
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleVideoUpload}
+      />
+
       {/* Header */}
       <section className="bg-gradient-to-br from-primary to-secondary py-8">
         <div className="healthcare-container">
@@ -438,10 +669,27 @@ export default function Articles() {
             >
               <div className="flex gap-3">
                 <Avatar className="w-10 h-10">
-                  <AvatarImage src={currentUser.image} />
-                  <AvatarFallback>You</AvatarFallback>
+                  <AvatarImage src={currentUserImage} />
+                  <AvatarFallback>{currentUserName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
+                  {/* Feeling indicator */}
+                  {selectedFeeling && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Feeling <span className="font-medium text-foreground">{selectedFeeling}</span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setSelectedFeeling(null)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
                   <Textarea
                     placeholder="Share a health tip, ask a question, or start a discussion..."
                     value={newPostContent}
@@ -449,16 +697,23 @@ export default function Articles() {
                     className="min-h-[80px] resize-none border-0 bg-muted/50 focus-visible:ring-1"
                   />
                   
-                  {/* Image Preview */}
+                  {/* Image/Video Preview */}
                   {newPostImages.length > 0 && (
                     <div className="flex gap-2 mt-3 flex-wrap">
-                      {newPostImages.map((img, index) => (
+                      {newPostImages.map((media, index) => (
                         <div key={index} className="relative">
-                          <img
-                            src={img}
-                            alt="Upload preview"
-                            className="w-24 h-24 object-cover rounded-lg"
-                          />
+                          {media.includes(".mp4") || media.includes(".webm") || media.includes(".mov") ? (
+                            <video
+                              src={media}
+                              className="w-24 h-24 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <img
+                              src={media}
+                              alt="Upload preview"
+                              className="w-24 h-24 object-cover rounded-lg"
+                            />
+                          )}
                           <button
                             onClick={() => removeImage(index)}
                             className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
@@ -477,34 +732,69 @@ export default function Articles() {
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-primary"
-                        onClick={handleImageUpload}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
                       >
-                        <Image className="w-5 h-5 mr-1" />
+                        {uploading ? (
+                          <Loader2 className="w-5 h-5 mr-1 animate-spin" />
+                        ) : (
+                          <Image className="w-5 h-5 mr-1" />
+                        )}
                         Photo
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-muted-foreground hover:text-primary"
+                        onClick={() => videoInputRef.current?.click()}
+                        disabled={uploading}
                       >
                         <Video className="w-5 h-5 mr-1" />
                         Video
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-primary hidden sm:flex"
-                      >
-                        <Smile className="w-5 h-5 mr-1" />
-                        Feeling
-                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`text-muted-foreground hover:text-primary ${
+                              selectedFeeling ? "text-primary" : ""
+                            }`}
+                          >
+                            <Smile className="w-5 h-5 mr-1" />
+                            Feeling
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2">
+                          <div className="grid grid-cols-5 gap-1">
+                            {feelings.map((feeling) => (
+                              <button
+                                key={feeling.label}
+                                onClick={() => setSelectedFeeling(`${feeling.emoji} ${feeling.label}`)}
+                                className="flex flex-col items-center p-2 rounded-lg hover:bg-muted transition-colors"
+                                title={feeling.label}
+                              >
+                                <span className="text-xl">{feeling.emoji}</span>
+                                <span className="text-[10px] text-muted-foreground mt-1">{feeling.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <Button
                       onClick={handleCreatePost}
-                      disabled={!newPostContent.trim() && newPostImages.length === 0}
+                      disabled={(!newPostContent.trim() && newPostImages.length === 0) || posting}
                       size="sm"
                     >
-                      Post
+                      {posting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Posting...
+                        </>
+                      ) : (
+                        "Post"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -528,6 +818,13 @@ export default function Articles() {
             </motion.div>
           )}
 
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
+
           {/* Posts Feed */}
           <AnimatePresence>
             {filteredPosts.map((post, index) => (
@@ -548,8 +845,13 @@ export default function Articles() {
                         <AvatarFallback>{post.author[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-foreground">{post.author}</h3>
+                          {post.feeling && (
+                            <span className="text-sm text-muted-foreground">
+                              is feeling {post.feeling}
+                            </span>
+                          )}
                           {post.authorRole !== "Community Member" && (
                             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                               {post.authorRole}
@@ -584,16 +886,25 @@ export default function Articles() {
                   </div>
                 </div>
 
-                {/* Post Images */}
+                {/* Post Images/Videos */}
                 {post.images.length > 0 && (
                   <div className={`grid ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-0.5`}>
-                    {post.images.map((img, imgIndex) => (
-                      <img
-                        key={imgIndex}
-                        src={img}
-                        alt={`Post image ${imgIndex + 1}`}
-                        className="w-full h-64 object-cover"
-                      />
+                    {post.images.map((media, imgIndex) => (
+                      media.includes(".mp4") || media.includes(".webm") || media.includes(".mov") ? (
+                        <video
+                          key={imgIndex}
+                          src={media}
+                          controls
+                          className="w-full h-64 object-cover"
+                        />
+                      ) : (
+                        <img
+                          key={imgIndex}
+                          src={media}
+                          alt={`Post image ${imgIndex + 1}`}
+                          className="w-full h-64 object-cover"
+                        />
+                      )
                     ))}
                   </div>
                 )}
@@ -658,8 +969,8 @@ export default function Articles() {
                         {/* Comment Input */}
                         <div className="flex gap-2">
                           <Avatar className="w-8 h-8">
-                            <AvatarImage src={currentUser.image} />
-                            <AvatarFallback>You</AvatarFallback>
+                            <AvatarImage src={currentUserImage} />
+                            <AvatarFallback>{currentUserName[0]}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 flex gap-2">
                             <input
@@ -738,8 +1049,8 @@ export default function Articles() {
                                 {replyTo?.postId === post.id && replyTo?.commentId === comment.id && (
                                   <div className="mt-2 ml-4 flex gap-2">
                                     <Avatar className="w-6 h-6">
-                                      <AvatarImage src={currentUser.image} />
-                                      <AvatarFallback>You</AvatarFallback>
+                                      <AvatarImage src={currentUserImage} />
+                                      <AvatarFallback>{currentUserName[0]}</AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 flex gap-2">
                                       <input
@@ -782,7 +1093,7 @@ export default function Articles() {
             ))}
           </AnimatePresence>
 
-          {filteredPosts.length === 0 && (
+          {!loading && filteredPosts.length === 0 && (
             <div className="text-center py-12 bg-card rounded-xl">
               <p className="text-muted-foreground">No posts in this category yet. Be the first to share!</p>
             </div>
