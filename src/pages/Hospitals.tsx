@@ -1,191 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List } from "lucide-react";
+import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FacilitiesMap } from "@/components/FacilitiesMap";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Hospital {
+  id: string;
+  name: string;
+  type: string;
+  location: string;
+  address: string;
+  phone: string | null;
+  rating: number | null;
+  beds: number | null;
+  specialties: string[] | null;
+  status: string;
+  image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+interface ServiceWithPrice {
+  name: string;
+  price: string;
+}
+
+interface Diagnostic {
+  id: string;
+  name: string;
+  location: string;
+  address: string;
+  phone: string | null;
+  rating: number | null;
+  services: ServiceWithPrice[];
+  status: string;
+  image_url: string | null;
+  open_hours: string | null;
+}
 
 const locations = [
   { value: "all", label: "All Locations" },
-  { value: "dhaka", label: "Dhaka" },
-  { value: "chattogram", label: "Chattogram" },
-  { value: "rajshahi", label: "Rajshahi" },
-  { value: "khulna", label: "Khulna" },
-  { value: "sylhet", label: "Sylhet" },
-  { value: "barisal", label: "Barisal" },
-  { value: "rangpur", label: "Rangpur" },
-  { value: "mymensingh", label: "Mymensingh" },
-];
-
-const hospitals = [
-  {
-    id: 1,
-    name: "Dhaka Medical College Hospital",
-    type: "Government",
-    location: "dhaka",
-    address: "Secretariat Road, Dhaka 1000",
-    phone: "+880 2-55165001",
-    rating: 4.5,
-    reviews: 324,
-    distance: "2.5 km",
-    emergency: true,
-    specialties: ["Cardiology", "Neurology", "Orthopedics", "Oncology"],
-    image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
-    lat: 23.7260,
-    lng: 90.3980,
-  },
-  {
-    id: 2,
-    name: "Square Hospital",
-    type: "Private",
-    location: "dhaka",
-    address: "18/F, Bir Uttam Qazi Nuruzzaman Sarak, Dhaka",
-    phone: "+880 2-8144400",
-    rating: 4.8,
-    reviews: 512,
-    distance: "4.2 km",
-    emergency: true,
-    specialties: ["Cardiac Surgery", "Nephrology", "Gastroenterology"],
-    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop",
-    lat: 23.7525,
-    lng: 90.3800,
-  },
-  {
-    id: 3,
-    name: "Chattogram Medical College Hospital",
-    type: "Government",
-    location: "chattogram",
-    address: "K.B. Fazlul Kader Road, Chattogram",
-    phone: "+880 31-630335",
-    rating: 4.4,
-    reviews: 298,
-    distance: "3.2 km",
-    emergency: true,
-    specialties: ["General Surgery", "Medicine", "Pediatrics"],
-    image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&h=400&fit=crop",
-    lat: 22.3590,
-    lng: 91.8318,
-  },
-  {
-    id: 4,
-    name: "Rajshahi Medical College Hospital",
-    type: "Government",
-    location: "rajshahi",
-    address: "Medical College Road, Rajshahi",
-    phone: "+880 721-772150",
-    rating: 4.3,
-    reviews: 186,
-    distance: "1.8 km",
-    emergency: true,
-    specialties: ["Cardiology", "Orthopedics", "Gynecology"],
-    image: "https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=600&h=400&fit=crop",
-    lat: 24.3745,
-    lng: 88.6042,
-  },
-  {
-    id: 5,
-    name: "Apollo Hospital Dhaka",
-    type: "Private",
-    location: "dhaka",
-    address: "Plot 81, Block E, Bashundhara, Dhaka",
-    phone: "+880 2-8401661",
-    rating: 4.7,
-    reviews: 428,
-    distance: "6.8 km",
-    emergency: true,
-    specialties: ["Transplant Surgery", "Oncology", "Neurosurgery"],
-    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop",
-    lat: 23.8130,
-    lng: 90.4312,
-  },
-  {
-    id: 6,
-    name: "Sylhet MAG Osmani Medical College",
-    type: "Government",
-    location: "sylhet",
-    address: "Medical Road, Sylhet 3100",
-    phone: "+880 821-713667",
-    rating: 4.2,
-    reviews: 145,
-    distance: "2.1 km",
-    emergency: true,
-    specialties: ["Medicine", "Surgery", "ENT"],
-    image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
-    lat: 24.8998,
-    lng: 91.8710,
-  },
-];
-
-const diagnostics = [
-  {
-    id: 1,
-    name: "Popular Diagnostic Centre",
-    location: "dhaka",
-    address: "House 16, Road 2, Dhanmondi, Dhaka",
-    phone: "+880 2-9116491",
-    rating: 4.6,
-    reviews: 289,
-    distance: "1.8 km",
-    services: ["Blood Tests", "X-Ray", "MRI", "CT Scan", "ECG"],
-    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
-    lat: 23.7461,
-    lng: 90.3742,
-  },
-  {
-    id: 2,
-    name: "Ibn Sina Diagnostic",
-    location: "dhaka",
-    address: "House 48, Road 9/A, Dhanmondi, Dhaka",
-    phone: "+880 2-9144269",
-    rating: 4.5,
-    reviews: 234,
-    distance: "2.3 km",
-    services: ["Pathology", "Radiology", "Ultrasound", "Endoscopy"],
-    image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop",
-    lat: 23.7505,
-    lng: 90.3731,
-  },
-  {
-    id: 3,
-    name: "Labaid Diagnostics Chattogram",
-    location: "chattogram",
-    address: "CDA Avenue, Chattogram",
-    phone: "+880 31-654321",
-    rating: 4.7,
-    reviews: 312,
-    distance: "2.5 km",
-    services: ["All Lab Tests", "Imaging", "Health Packages"],
-    image: "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=600&h=400&fit=crop",
-    lat: 22.3475,
-    lng: 91.8123,
-  },
-  {
-    id: 4,
-    name: "Medinova Diagnostic Rajshahi",
-    location: "rajshahi",
-    address: "Shaheb Bazar, Rajshahi",
-    phone: "+880 721-812345",
-    rating: 4.4,
-    reviews: 156,
-    distance: "1.5 km",
-    services: ["Blood Tests", "ECG", "X-Ray", "Ultrasound"],
-    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
-    lat: 24.3636,
-    lng: 88.6241,
-  },
-  {
-    id: 5,
-    name: "Sylhet Diagnostic Centre",
-    location: "sylhet",
-    address: "Zindabazar, Sylhet",
-    phone: "+880 821-723456",
-    rating: 4.3,
-    reviews: 98,
-    distance: "1.2 km",
-    services: ["Pathology", "Radiology", "Health Checkup"],
-    image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=400&fit=crop",
-    lat: 24.8949,
-    lng: 91.8687,
-  },
+  { value: "Dhaka", label: "Dhaka" },
+  { value: "Chittagong", label: "Chittagong" },
+  { value: "Rajshahi", label: "Rajshahi" },
+  { value: "Khulna", label: "Khulna" },
+  { value: "Sylhet", label: "Sylhet" },
+  { value: "Barisal", label: "Barisal" },
+  { value: "Rangpur", label: "Rangpur" },
+  { value: "Mymensingh", label: "Mymensingh" },
 ];
 
 export default function Hospitals() {
@@ -194,6 +57,49 @@ export default function Hospitals() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    
+    // Fetch hospitals
+    const { data: hospitalsData, error: hospitalsError } = await supabase
+      .from("hospitals")
+      .select("*")
+      .eq("status", "approved")
+      .order("rating", { ascending: false });
+
+    if (hospitalsError) {
+      console.error("Error fetching hospitals:", hospitalsError);
+    } else {
+      setHospitals(hospitalsData || []);
+    }
+
+    // Fetch diagnostics
+    const { data: diagnosticsData, error: diagnosticsError } = await supabase
+      .from("diagnostics")
+      .select("*")
+      .eq("status", "approved")
+      .order("rating", { ascending: false });
+
+    if (diagnosticsError) {
+      console.error("Error fetching diagnostics:", diagnosticsError);
+    } else {
+      const parsed = (diagnosticsData || []).map(d => ({
+        ...d,
+        services: Array.isArray(d.services) ? (d.services as unknown as ServiceWithPrice[]) : []
+      }));
+      setDiagnostics(parsed);
+    }
+
+    setLoading(false);
+  };
 
   const filteredHospitals = hospitals.filter((h) => {
     const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -210,6 +116,39 @@ export default function Hospitals() {
   });
 
   const selectedLocationLabel = locations.find(l => l.value === selectedLocation)?.label || "All Locations";
+
+  // Convert for map display
+  const hospitalsForMap = filteredHospitals.map(h => ({
+    id: parseInt(h.id.slice(0, 8), 16) || 1,
+    name: h.name,
+    type: h.type,
+    location: h.location.toLowerCase(),
+    address: h.address,
+    phone: h.phone || "",
+    rating: h.rating || 0,
+    reviews: 0,
+    distance: "N/A",
+    emergency: true,
+    specialties: h.specialties || [],
+    image: h.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop",
+    lat: h.latitude || 23.8103,
+    lng: h.longitude || 90.4125,
+  }));
+
+  const diagnosticsForMap = filteredDiagnostics.map(d => ({
+    id: parseInt(d.id.slice(0, 8), 16) || 1,
+    name: d.name,
+    location: d.location.toLowerCase(),
+    address: d.address,
+    phone: d.phone || "",
+    rating: d.rating || 0,
+    reviews: 0,
+    distance: "N/A",
+    services: d.services.map(s => s.name),
+    image: d.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop",
+    lat: 23.8103,
+    lng: 90.4125,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -350,144 +289,177 @@ export default function Hospitals() {
       {/* Main Content */}
       <section className="healthcare-section">
         <div className="healthcare-container">
-          {viewMode === "map" ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : viewMode === "map" ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
               <FacilitiesMap
-                hospitals={filteredHospitals}
-                diagnostics={filteredDiagnostics}
+                hospitals={hospitalsForMap}
+                diagnostics={diagnosticsForMap}
                 activeTab={activeTab}
-                selectedLocation={selectedLocation}
+                selectedLocation={selectedLocation.toLowerCase()}
               />
             </motion.div>
           ) : (
             <>
               {activeTab === "hospitals" ? (
-                <div className="grid md:grid-cols-2 gap-6">
-                  {filteredHospitals.map((hospital, index) => (
-                    <motion.div
-                      key={hospital.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="healthcare-card overflow-hidden"
-                    >
-                      <div className="relative h-48 -m-6 mb-4">
-                        <img
-                          src={hospital.image}
-                          alt={hospital.name}
-                          className="w-full h-full object-cover"
-                        />
-                        {hospital.emergency && (
-                          <span className="absolute top-4 right-4 bg-healthcare-red text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
-                            24/7 Emergency
-                          </span>
-                        )}
-                        <span className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-foreground px-3 py-1 rounded-full text-xs font-medium">
-                          {hospital.type}
-                        </span>
-                      </div>
-
-                      <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                        {hospital.name}
-                      </h3>
-
-                      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
-                        <MapPin className="w-4 h-4" />
-                        <span>{hospital.address}</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {hospital.specialties.slice(0, 3).map((spec) => (
-                          <span key={spec} className="healthcare-badge text-xs">
-                            {spec}
-                          </span>
-                        ))}
-                        {hospital.specialties.length > 3 && (
-                          <span className="healthcare-badge text-xs">
-                            +{hospital.specialties.length - 3} more
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-accent fill-accent" />
-                            <span className="font-semibold text-foreground">{hospital.rating}</span>
-                            <span className="text-sm text-muted-foreground">({hospital.reviews})</span>
+                <>
+                  {filteredHospitals.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No hospitals found. Check back later or try a different search.</p>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {filteredHospitals.map((hospital, index) => (
+                        <motion.div
+                          key={hospital.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="healthcare-card overflow-hidden"
+                        >
+                          <div className="relative h-48 -m-6 mb-4">
+                            <img
+                              src={hospital.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop"}
+                              alt={hospital.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <span className="absolute top-4 right-4 bg-healthcare-green text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
+                              24/7 Emergency
+                            </span>
+                            <span className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-foreground px-3 py-1 rounded-full text-xs font-medium">
+                              {hospital.type}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                            <Navigation className="w-4 h-4" />
-                            <span>{hospital.distance}</span>
+
+                          <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+                            {hospital.name}
+                          </h3>
+
+                          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
+                            <MapPin className="w-4 h-4" />
+                            <span>{hospital.address}</span>
                           </div>
-                        </div>
-                        <Button variant="healthcare" size="sm">
-                          <Phone className="w-4 h-4 mr-1" />
-                          Contact
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {(hospital.specialties || []).slice(0, 3).map((spec) => (
+                              <span key={spec} className="healthcare-badge text-xs">
+                                {spec}
+                              </span>
+                            ))}
+                            {(hospital.specialties || []).length > 3 && (
+                              <span className="healthcare-badge text-xs">
+                                +{(hospital.specialties || []).length - 3} more
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-border">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-accent fill-accent" />
+                                <span className="font-semibold text-foreground">{hospital.rating || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                                <Building2 className="w-4 h-4" />
+                                <span>{hospital.beds || 0} beds</span>
+                              </div>
+                            </div>
+                            {hospital.phone && (
+                              <Button variant="healthcare" size="sm" asChild>
+                                <a href={`tel:${hospital.phone}`}>
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  Contact
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredDiagnostics.map((diagnostic, index) => (
-                    <motion.div
-                      key={diagnostic.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="healthcare-card overflow-hidden"
-                    >
-                      <div className="relative h-40 -m-6 mb-4">
-                        <img
-                          src={diagnostic.image}
-                          alt={diagnostic.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                <>
+                  {filteredDiagnostics.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No diagnostic centers found. Check back later or try a different search.</p>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredDiagnostics.map((diagnostic, index) => (
+                        <motion.div
+                          key={diagnostic.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="healthcare-card overflow-hidden"
+                        >
+                          <div className="relative h-40 -m-6 mb-4">
+                            <img
+                              src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop"}
+                              alt={diagnostic.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
 
-                      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
-                        {diagnostic.name}
-                      </h3>
+                          <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                            {diagnostic.name}
+                          </h3>
 
-                      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
-                        <MapPin className="w-4 h-4" />
-                        <span className="truncate">{diagnostic.address}</span>
-                      </div>
+                          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
+                            <MapPin className="w-4 h-4" />
+                            <span>{diagnostic.address}</span>
+                          </div>
 
-                      <div className="flex flex-wrap gap-1 mb-4">
-                        {diagnostic.services.slice(0, 3).map((service) => (
-                          <span key={service} className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded">
-                            {service}
-                          </span>
-                        ))}
-                      </div>
+                          {diagnostic.open_hours && (
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-3">
+                              <Clock className="w-4 h-4" />
+                              <span>{diagnostic.open_hours}</span>
+                            </div>
+                          )}
 
-                      <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-accent fill-accent" />
-                          <span className="font-semibold text-foreground">{diagnostic.rating}</span>
-                          <span className="text-xs text-muted-foreground">({diagnostic.reviews})</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                          <Navigation className="w-4 h-4" />
-                          <span>{diagnostic.distance}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                          <div className="space-y-1 mb-4">
+                            <p className="text-xs font-medium text-muted-foreground">Services & Prices:</p>
+                            {diagnostic.services.slice(0, 3).map((s, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">{s.name}</span>
+                                <span className="font-medium text-foreground">{s.price || "N/A"}</span>
+                              </div>
+                            ))}
+                            {diagnostic.services.length > 3 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{diagnostic.services.length - 3} more services
+                              </p>
+                            )}
+                          </div>
 
-              {((activeTab === "hospitals" && filteredHospitals.length === 0) ||
-                (activeTab === "diagnostics" && filteredDiagnostics.length === 0)) && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No facilities found matching your search.</p>
-                </div>
+                          <div className="flex items-center justify-between pt-4 border-t border-border">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-accent fill-accent" />
+                              <span className="font-semibold text-foreground">{diagnostic.rating || 0}</span>
+                            </div>
+                            {diagnostic.phone && (
+                              <Button variant="healthcare" size="sm" asChild>
+                                <a href={`tel:${diagnostic.phone}`}>
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  Contact
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

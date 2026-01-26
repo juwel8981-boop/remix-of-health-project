@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   FileText, CheckCircle2, XCircle, Eye, MessageSquare, 
-  Heart, Search, Clock
+  Search, Clock, Trash2, ThumbsUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,80 +26,28 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Post {
   id: string;
+  user_id: string;
   author_name: string;
-  author_avatar: string;
+  author_avatar: string | null;
   content: string;
   image_url: string | null;
-  category: string;
-  status: "pending" | "approved" | "rejected";
+  category: string | null;
+  status: string | null;
   rejection_reason: string | null;
-  likes_count: number;
-  comments_count: number;
+  likes_count: number | null;
+  comments_count: number | null;
   created_at: string;
 }
 
-// Mock data
-const mockPosts: Post[] = [
-  {
-    id: "1",
-    author_name: "Dr. Karim Hassan",
-    author_avatar: "",
-    content: "5 Essential Tips for Managing Diabetes During Ramadan. It's important to consult your doctor before fasting if you have diabetes. Here are some tips to help you stay healthy...",
-    image_url: "https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=800",
-    category: "Health Tips",
-    status: "pending",
-    rejection_reason: null,
-    likes_count: 45,
-    comments_count: 12,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "2",
-    author_name: "Fatima Begum",
-    author_avatar: "",
-    content: "Just visited the new cardiology department at Square Hospital. The facilities are amazing and the doctors are very professional!",
-    image_url: null,
-    category: "Experience",
-    status: "pending",
-    rejection_reason: null,
-    likes_count: 23,
-    comments_count: 5,
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "3",
-    author_name: "Rahman Ahmed",
-    author_avatar: "",
-    content: "Important announcement: Free health checkup camp this weekend at Uttara Community Center. All are welcome!",
-    image_url: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800",
-    category: "Announcement",
-    status: "approved",
-    rejection_reason: null,
-    likes_count: 89,
-    comments_count: 34,
-    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "4",
-    author_name: "Anonymous User",
-    author_avatar: "",
-    content: "This miracle cure will fix all your problems! Buy now at discounted price...",
-    image_url: null,
-    category: "Health Tips",
-    status: "rejected",
-    rejection_reason: "Spam content promoting unverified medical products",
-    likes_count: 2,
-    comments_count: 0,
-    created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 export default function ContentManager() {
   const { toast } = useToast();
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -107,6 +55,34 @@ export default function ContentManager() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<Post | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("health_posts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch posts",
+        variant: "destructive",
+      });
+      console.error(error);
+      setPosts([]);
+    } else {
+      setPosts(data || []);
+    }
+    setLoading(false);
+  };
 
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,41 +96,97 @@ export default function ContentManager() {
   const approvedCount = posts.filter(p => p.status === "approved").length;
   const rejectedCount = posts.filter(p => p.status === "rejected").length;
 
-  const handleApprove = (post: Post) => {
-    setPosts(prev => prev.map(p => 
-      p.id === post.id ? { ...p, status: "approved" as const } : p
-    ));
-    toast({
-      title: "Post approved",
-      description: `"${post.content.slice(0, 50)}..." has been approved and is now visible.`,
-    });
+  const handleApprove = async (post: Post) => {
+    setProcessingId(post.id);
+    const { error } = await supabase
+      .from("health_posts")
+      .update({ status: "approved", rejection_reason: null })
+      .eq("id", post.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to approve post",
+        variant: "destructive",
+      });
+      console.error(error);
+    } else {
+      toast({
+        title: "Post approved",
+        description: `"${post.content.slice(0, 50)}..." has been approved and is now visible.`,
+      });
+      fetchPosts();
+    }
+    setProcessingId(null);
   };
 
-  const handleReject = () => {
-    if (!selectedPost) return;
-    setPosts(prev => prev.map(p => 
-      p.id === selectedPost.id ? { ...p, status: "rejected" as const, rejection_reason: rejectionReason } : p
-    ));
-    toast({
-      title: "Post rejected",
-      description: "The post has been rejected and the author will be notified.",
-      variant: "destructive",
-    });
+  const handleReject = async () => {
+    if (!selectedPost || !rejectionReason.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide a rejection reason",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProcessingId(selectedPost.id);
+    const { error } = await supabase
+      .from("health_posts")
+      .update({ status: "rejected", rejection_reason: rejectionReason })
+      .eq("id", selectedPost.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject post",
+        variant: "destructive",
+      });
+      console.error(error);
+    } else {
+      toast({
+        title: "Post rejected",
+        description: "The post has been rejected and the author will be notified.",
+        variant: "destructive",
+      });
+      fetchPosts();
+    }
     setRejectDialogOpen(false);
     setRejectionReason("");
     setSelectedPost(null);
+    setProcessingId(null);
   };
 
-  const handleDelete = (post: Post) => {
-    setPosts(prev => prev.filter(p => p.id !== post.id));
-    toast({
-      title: "Post deleted",
-      description: "The post has been permanently removed.",
-      variant: "destructive",
-    });
+  const handleDelete = async () => {
+    if (!postToDelete) return;
+
+    setProcessingId(postToDelete.id);
+    const { error } = await supabase
+      .from("health_posts")
+      .delete()
+      .eq("id", postToDelete.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete post",
+        variant: "destructive",
+      });
+      console.error(error);
+    } else {
+      toast({
+        title: "Post deleted",
+        description: "The post has been permanently removed.",
+        variant: "destructive",
+      });
+      fetchPosts();
+    }
+    setDeleteDialogOpen(false);
+    setPostToDelete(null);
+    setProcessingId(null);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "pending":
         return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
@@ -166,6 +198,14 @@ export default function ContentManager() {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -221,6 +261,7 @@ export default function ContentManager() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="general">General</SelectItem>
             <SelectItem value="Health Tips">Health Tips</SelectItem>
             <SelectItem value="Experience">Experience</SelectItem>
             <SelectItem value="Announcement">Announcement</SelectItem>
@@ -241,20 +282,20 @@ export default function ContentManager() {
           >
             <div className="flex items-start gap-4">
               <Avatar className="w-10 h-10">
-                <AvatarImage src={post.author_avatar} />
+                <AvatarImage src={post.author_avatar || ""} />
                 <AvatarFallback>{post.author_name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
               </Avatar>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="font-semibold text-foreground">{post.author_name}</span>
                   {getStatusBadge(post.status)}
-                  <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                  <Badge variant="secondary" className="text-xs">{post.category || "General"}</Badge>
                 </div>
                 <p className="text-muted-foreground text-xs mb-2">
                   {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                 </p>
-                <p className="text-foreground mb-3">{post.content}</p>
+                <p className="text-foreground mb-3 whitespace-pre-wrap">{post.content}</p>
                 
                 {post.image_url && (
                   <div className="relative mb-3">
@@ -276,10 +317,10 @@ export default function ContentManager() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" /> {post.likes_count}
+                      <ThumbsUp className="w-4 h-4" /> {post.likes_count || 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      <MessageSquare className="w-4 h-4" /> {post.comments_count}
+                      <MessageSquare className="w-4 h-4" /> {post.comments_count || 0}
                     </span>
                   </div>
                   
@@ -302,6 +343,7 @@ export default function ContentManager() {
                           variant="outline"
                           className="text-healthcare-green border-healthcare-green hover:bg-healthcare-green hover:text-white"
                           onClick={() => handleApprove(post)}
+                          disabled={processingId === post.id}
                         >
                           <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
                         </Button>
@@ -313,6 +355,7 @@ export default function ContentManager() {
                             setSelectedPost(post);
                             setRejectDialogOpen(true);
                           }}
+                          disabled={processingId === post.id}
                         >
                           <XCircle className="w-4 h-4 mr-1" /> Reject
                         </Button>
@@ -323,9 +366,13 @@ export default function ContentManager() {
                       size="sm" 
                       variant="ghost"
                       className="text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(post)}
+                      onClick={() => {
+                        setPostToDelete(post);
+                        setDeleteDialogOpen(true);
+                      }}
+                      disabled={processingId === post.id}
                     >
-                      Delete
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -368,6 +415,24 @@ export default function ContentManager() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-2xl">
@@ -378,7 +443,7 @@ export default function ContentManager() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <Avatar>
-                  <AvatarImage src={selectedPost.author_avatar} />
+                  <AvatarImage src={selectedPost.author_avatar || ""} />
                   <AvatarFallback>{selectedPost.author_name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
                 </Avatar>
                 <div>
@@ -388,7 +453,7 @@ export default function ContentManager() {
                   </p>
                 </div>
               </div>
-              <p className="text-foreground mb-4">{selectedPost.content}</p>
+              <p className="text-foreground mb-4 whitespace-pre-wrap">{selectedPost.content}</p>
               {selectedPost.image_url && (
                 <img 
                   src={selectedPost.image_url} 

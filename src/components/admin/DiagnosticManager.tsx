@@ -1,15 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Plus, Edit, Trash2, CheckCircle2, XCircle, 
-  Building2, MapPin, Phone, Star, TestTube, Save
+  MapPin, Phone, Star, TestTube, Save, Clock
 } from "lucide-react";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ServiceWithPrice {
   name: string;
@@ -17,88 +21,60 @@ interface ServiceWithPrice {
 }
 
 interface Diagnostic {
-  id: number;
+  id: string;
   name: string;
   location: string;
   address: string;
-  phone: string;
-  rating: number;
+  phone: string | null;
+  rating: number | null;
   services: ServiceWithPrice[];
-  status: "approved" | "pending" | "rejected";
-  image: string;
-  openHours: string;
+  status: string;
+  image_url: string | null;
+  open_hours: string | null;
+  created_at: string;
 }
 
 const locations = ["Dhaka", "Chittagong", "Sylhet", "Rajshahi", "Khulna", "Barisal", "Rangpur"];
-const allServices = [
-  "X-Ray", "MRI", "CT Scan", "Ultrasound", "ECG", "Blood Test",
-  "Urine Test", "Pathology", "Endoscopy", "Colonoscopy",
-  "Mammography", "Bone Density", "PET Scan", "Biopsy"
-];
-
-const initialDiagnostics: Diagnostic[] = [
-  {
-    id: 1,
-    name: "Popular Diagnostic Centre",
-    location: "Dhaka",
-    address: "House 16, Road 2, Dhanmondi, Dhaka 1205",
-    phone: "+880 2-9666778",
-    rating: 4.7,
-    services: [
-      { name: "X-Ray", price: "৳500" },
-      { name: "MRI", price: "৳8,000" },
-      { name: "CT Scan", price: "৳6,000" },
-      { name: "Blood Test", price: "৳300" },
-      { name: "Ultrasound", price: "৳1,500" },
-    ],
-    status: "approved",
-    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
-    openHours: "7:00 AM - 10:00 PM",
-  },
-  {
-    id: 2,
-    name: "Ibn Sina Diagnostic",
-    location: "Dhaka",
-    address: "House 48, Road 9/A, Dhanmondi, Dhaka 1209",
-    phone: "+880 2-9128853",
-    rating: 4.6,
-    services: [
-      { name: "X-Ray", price: "৳450" },
-      { name: "Ultrasound", price: "৳1,200" },
-      { name: "ECG", price: "৳800" },
-      { name: "Blood Test", price: "৳250" },
-      { name: "Pathology", price: "৳400" },
-    ],
-    status: "approved",
-    image: "https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=800",
-    openHours: "6:00 AM - 11:00 PM",
-  },
-  {
-    id: 3,
-    name: "Lab Aid Diagnostic",
-    location: "Chittagong",
-    address: "Station Road, Chittagong",
-    phone: "+880 31-654321",
-    rating: 4.4,
-    services: [
-      { name: "Blood Test", price: "৳200" },
-      { name: "X-Ray", price: "৳400" },
-      { name: "ECG", price: "৳700" },
-    ],
-    status: "pending",
-    image: "https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=800",
-    openHours: "8:00 AM - 9:00 PM",
-  },
-];
 
 export default function DiagnosticManager() {
-  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>(initialDiagnostics);
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [editingDiagnostic, setEditingDiagnostic] = useState<Diagnostic | null>(null);
   const [isAddingDiagnostic, setIsAddingDiagnostic] = useState(false);
   const [diagnosticForm, setDiagnosticForm] = useState<Partial<Diagnostic>>({});
+  const [serviceInputs, setServiceInputs] = useState<ServiceWithPrice[]>([{ name: "", price: "" }]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [diagnosticToDelete, setDiagnosticToDelete] = useState<Diagnostic | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchDiagnostics();
+  }, []);
+
+  const fetchDiagnostics = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("diagnostics")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to fetch diagnostic centers");
+      console.error(error);
+      setDiagnostics([]);
+    } else {
+      // Parse services from JSONB
+      const parsed = (data || []).map(d => ({
+        ...d,
+        services: Array.isArray(d.services) ? (d.services as unknown as ServiceWithPrice[]) : []
+      }));
+      setDiagnostics(parsed);
+    }
+    setLoading(false);
+  };
 
   const filteredDiagnostics = diagnostics.filter((diagnostic) => {
     const matchesSearch =
@@ -109,6 +85,8 @@ export default function DiagnosticManager() {
     return matchesSearch && matchesLocation && matchesStatus;
   });
 
+  const pendingCount = diagnostics.filter(d => d.status === "pending").length;
+  const approvedCount = diagnostics.filter(d => d.status === "approved").length;
 
   const handleAddDiagnostic = () => {
     setIsAddingDiagnostic(true);
@@ -120,13 +98,11 @@ export default function DiagnosticManager() {
       rating: 0,
       services: [],
       status: "pending",
-      image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
-      openHours: "",
+      image_url: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800",
+      open_hours: "",
     });
     setServiceInputs([{ name: "", price: "" }]);
   };
-
-  const [serviceInputs, setServiceInputs] = useState<{ name: string; price: string }[]>([{ name: "", price: "" }]);
 
   const addServiceInput = () => {
     setServiceInputs([...serviceInputs, { name: "", price: "" }]);
@@ -142,28 +118,62 @@ export default function DiagnosticManager() {
     setServiceInputs(serviceInputs.filter((_, i) => i !== index));
   };
 
-  const handleSaveDiagnostic = () => {
+  const handleSaveDiagnostic = async () => {
+    if (!diagnosticForm.name || !diagnosticForm.location || !diagnosticForm.address) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
     const validServices = serviceInputs.filter(s => s.name.trim() !== "");
-    
+
     if (editingDiagnostic) {
-      setDiagnostics((prev) =>
-        prev.map((d) => (d.id === editingDiagnostic.id ? { ...d, ...diagnosticForm, services: validServices } as Diagnostic : d))
-      );
+      setProcessingId(editingDiagnostic.id);
+      const { error } = await supabase
+        .from("diagnostics")
+        .update({
+          name: diagnosticForm.name,
+          location: diagnosticForm.location,
+          address: diagnosticForm.address,
+          phone: diagnosticForm.phone || null,
+          rating: diagnosticForm.rating || 0,
+          services: validServices as unknown as Json,
+          status: diagnosticForm.status || "pending",
+          image_url: diagnosticForm.image_url || null,
+          open_hours: diagnosticForm.open_hours || null,
+        })
+        .eq("id", editingDiagnostic.id);
+
+      if (error) {
+        toast.error("Failed to update diagnostic center");
+        console.error(error);
+      } else {
+        toast.success("Diagnostic center updated successfully");
+        fetchDiagnostics();
+      }
       setEditingDiagnostic(null);
+      setProcessingId(null);
     } else if (isAddingDiagnostic) {
-      const newDiagnostic: Diagnostic = {
-        id: Date.now(),
-        name: diagnosticForm.name || "",
-        location: diagnosticForm.location || "",
-        address: diagnosticForm.address || "",
-        phone: diagnosticForm.phone || "",
-        rating: diagnosticForm.rating || 0,
-        services: validServices,
-        status: diagnosticForm.status || "pending",
-        image: diagnosticForm.image || "",
-        openHours: diagnosticForm.openHours || "",
-      };
-      setDiagnostics((prev) => [newDiagnostic, ...prev]);
+      const { error } = await supabase
+        .from("diagnostics")
+        .insert({
+          name: diagnosticForm.name!,
+          location: diagnosticForm.location!,
+          address: diagnosticForm.address!,
+          phone: diagnosticForm.phone || null,
+          rating: diagnosticForm.rating || 0,
+          services: validServices as unknown as Json,
+          status: diagnosticForm.status || "pending",
+          image_url: diagnosticForm.image_url || null,
+          open_hours: diagnosticForm.open_hours || null,
+        });
+
+      if (error) {
+        toast.error("Failed to add diagnostic center");
+        console.error(error);
+      } else {
+        toast.success("Diagnostic center added successfully");
+        fetchDiagnostics();
+      }
       setIsAddingDiagnostic(false);
     }
     setDiagnosticForm({});
@@ -176,17 +186,51 @@ export default function DiagnosticManager() {
     setServiceInputs(diagnostic.services.length > 0 ? diagnostic.services : [{ name: "", price: "" }]);
   };
 
-  const handleDeleteDiagnostic = (id: number) => {
-    setDiagnostics((prev) => prev.filter((d) => d.id !== id));
+  const handleDeleteDiagnostic = async () => {
+    if (!diagnosticToDelete) return;
+
+    setProcessingId(diagnosticToDelete.id);
+    const { error } = await supabase
+      .from("diagnostics")
+      .delete()
+      .eq("id", diagnosticToDelete.id);
+
+    if (error) {
+      toast.error("Failed to delete diagnostic center");
+      console.error(error);
+    } else {
+      toast.success("Diagnostic center deleted successfully");
+      fetchDiagnostics();
+    }
+    setDeleteDialogOpen(false);
+    setDiagnosticToDelete(null);
+    setProcessingId(null);
   };
 
-  const handleStatusChange = (id: number, status: "approved" | "pending" | "rejected") => {
-    setDiagnostics((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status } : d))
+  const handleStatusChange = async (diagnostic: Diagnostic, status: string) => {
+    setProcessingId(diagnostic.id);
+    const { error } = await supabase
+      .from("diagnostics")
+      .update({ status })
+      .eq("id", diagnostic.id);
+
+    if (error) {
+      toast.error("Failed to update status");
+      console.error(error);
+    } else {
+      toast.success(`Diagnostic center ${status === "approved" ? "approved" : "rejected"}`);
+      fetchDiagnostics();
+    }
+    setProcessingId(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
     );
-  };
-
-  // Remove old toggleService function - no longer needed
+  }
 
   return (
     <div className="space-y-6">
@@ -200,6 +244,22 @@ export default function DiagnosticManager() {
           <Plus className="w-4 h-4 mr-2" />
           Add Diagnostic Center
         </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-foreground">{diagnostics.length}</p>
+          <p className="text-sm text-muted-foreground">Total Centers</p>
+        </div>
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+          <p className="text-sm text-muted-foreground">Pending</p>
+        </div>
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-healthcare-green">{approvedCount}</p>
+          <p className="text-sm text-muted-foreground">Approved</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -248,7 +308,7 @@ export default function DiagnosticManager() {
           >
             <div className="aspect-video relative">
               <img
-                src={diagnostic.image}
+                src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800"}
                 alt={diagnostic.name}
                 className="w-full h-full object-cover"
               />
@@ -270,7 +330,7 @@ export default function DiagnosticManager() {
                 <h3 className="font-semibold text-foreground">{diagnostic.name}</h3>
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-accent fill-accent" />
-                  <span className="font-medium text-foreground">{diagnostic.rating}</span>
+                  <span className="font-medium text-foreground">{diagnostic.rating || 0}</span>
                 </div>
               </div>
               
@@ -279,16 +339,24 @@ export default function DiagnosticManager() {
                   <MapPin className="w-4 h-4" />
                   <span>{diagnostic.location}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>{diagnostic.phone}</span>
-                </div>
+                {diagnostic.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    <span>{diagnostic.phone}</span>
+                  </div>
+                )}
+                {diagnostic.open_hours && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{diagnostic.open_hours}</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1 mb-4">
                 <p className="text-xs font-medium text-muted-foreground mb-2">Services & Prices:</p>
-                {diagnostic.services.slice(0, 3).map((s) => (
-                  <div key={s.name} className="flex justify-between items-center text-sm">
+                {diagnostic.services.slice(0, 3).map((s, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">{s.name}</span>
                     <span className="font-medium text-foreground">{s.price || "N/A"}</span>
                   </div>
@@ -307,7 +375,8 @@ export default function DiagnosticManager() {
                       variant="ghost"
                       size="sm"
                       className="flex-1 text-healthcare-green"
-                      onClick={() => handleStatusChange(diagnostic.id, "approved")}
+                      onClick={() => handleStatusChange(diagnostic, "approved")}
+                      disabled={processingId === diagnostic.id}
                     >
                       <CheckCircle2 className="w-4 h-4 mr-1" />
                       Approve
@@ -316,7 +385,8 @@ export default function DiagnosticManager() {
                       variant="ghost"
                       size="sm"
                       className="flex-1 text-destructive"
-                      onClick={() => handleStatusChange(diagnostic.id, "rejected")}
+                      onClick={() => handleStatusChange(diagnostic, "rejected")}
+                      disabled={processingId === diagnostic.id}
                     >
                       <XCircle className="w-4 h-4 mr-1" />
                       Reject
@@ -335,7 +405,10 @@ export default function DiagnosticManager() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-destructive"
-                  onClick={() => handleDeleteDiagnostic(diagnostic.id)}
+                  onClick={() => {
+                    setDiagnosticToDelete(diagnostic);
+                    setDeleteDialogOpen(true);
+                  }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -351,6 +424,24 @@ export default function DiagnosticManager() {
           <p className="text-muted-foreground">No diagnostic centers found matching your criteria.</p>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Diagnostic Center</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{diagnosticToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDiagnostic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit/Add Diagnostic Dialog */}
       <Dialog
@@ -370,7 +461,7 @@ export default function DiagnosticManager() {
 
           <div className="space-y-4">
             <div>
-              <Label>Center Name</Label>
+              <Label>Center Name *</Label>
               <Input
                 value={diagnosticForm.name || ""}
                 onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -379,7 +470,7 @@ export default function DiagnosticManager() {
             </div>
 
             <div>
-              <Label>Location</Label>
+              <Label>Location *</Label>
               <Select
                 value={diagnosticForm.location || ""}
                 onValueChange={(value) => setDiagnosticForm((prev) => ({ ...prev, location: value }))}
@@ -396,7 +487,7 @@ export default function DiagnosticManager() {
             </div>
 
             <div>
-              <Label>Full Address</Label>
+              <Label>Full Address *</Label>
               <Textarea
                 value={diagnosticForm.address || ""}
                 onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, address: e.target.value }))}
@@ -417,8 +508,8 @@ export default function DiagnosticManager() {
               <div>
                 <Label>Opening Hours</Label>
                 <Input
-                  value={diagnosticForm.openHours || ""}
-                  onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, openHours: e.target.value }))}
+                  value={diagnosticForm.open_hours || ""}
+                  onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, open_hours: e.target.value }))}
                   placeholder="7:00 AM - 10:00 PM"
                 />
               </div>
@@ -427,8 +518,8 @@ export default function DiagnosticManager() {
             <div>
               <Label>Image URL</Label>
               <Input
-                value={diagnosticForm.image || ""}
-                onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, image: e.target.value }))}
+                value={diagnosticForm.image_url || ""}
+                onChange={(e) => setDiagnosticForm((prev) => ({ ...prev, image_url: e.target.value }))}
                 placeholder="https://..."
               />
             </div>
@@ -478,7 +569,7 @@ export default function DiagnosticManager() {
                 <Select
                   value={diagnosticForm.status || "pending"}
                   onValueChange={(value) =>
-                    setDiagnosticForm((prev) => ({ ...prev, status: value as Diagnostic["status"] }))
+                    setDiagnosticForm((prev) => ({ ...prev, status: value }))
                   }
                 >
                   <SelectTrigger>
@@ -507,7 +598,7 @@ export default function DiagnosticManager() {
             </Button>
             <Button variant="healthcare" onClick={handleSaveDiagnostic}>
               <Save className="w-4 h-4 mr-2" />
-              Save
+              {editingDiagnostic ? "Save Changes" : "Add Center"}
             </Button>
           </DialogFooter>
         </DialogContent>

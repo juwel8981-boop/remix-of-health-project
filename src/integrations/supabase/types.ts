@@ -107,6 +107,51 @@ export type Database = {
           },
         ]
       }
+      diagnostics: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          image_url: string | null
+          location: string
+          name: string
+          open_hours: string | null
+          phone: string | null
+          rating: number | null
+          services: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location: string
+          name: string
+          open_hours?: string | null
+          phone?: string | null
+          rating?: number | null
+          services?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          name?: string
+          open_hours?: string | null
+          phone?: string | null
+          rating?: number | null
+          services?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       doctor_chambers: {
         Row: {
           address: string
@@ -344,6 +389,60 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weight?: number | null
+        }
+        Relationships: []
+      }
+      hospitals: {
+        Row: {
+          address: string
+          beds: number | null
+          created_at: string
+          id: string
+          image_url: string | null
+          latitude: number | null
+          location: string
+          longitude: number | null
+          name: string
+          phone: string | null
+          rating: number | null
+          specialties: string[] | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          beds?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          name: string
+          phone?: string | null
+          rating?: number | null
+          specialties?: string[] | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          beds?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          specialties?: string[] | null
+          status?: string
+          type?: string
+          updated_at?: string
         }
         Relationships: []
       }
