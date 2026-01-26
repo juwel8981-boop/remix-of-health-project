@@ -4,13 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, MapPin, LogOut, TrendingUp, MessageSquare, Star
+  Settings, LogOut, MessageSquare, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DoctorManager from "@/components/admin/DoctorManager";
 import HospitalManager from "@/components/admin/HospitalManager";
 import DiagnosticManager from "@/components/admin/DiagnosticManager";
-import DoctorChamberManager from "@/components/admin/DoctorChamberManager";
+
 import ContentManager from "@/components/admin/ContentManager";
 import CommentsManager from "@/components/admin/CommentsManager";
 import FeaturedDoctorsManager from "@/components/admin/FeaturedDoctorsManager";
@@ -21,10 +21,9 @@ import { User } from "@supabase/supabase-js";
 
 const sidebarLinks = [
   { name: "Dashboard", icon: LayoutDashboard, tab: "overview" },
-  { name: "Hospitals", icon: Building2, tab: "hospitals" },
-  { name: "Doctors", icon: Stethoscope, tab: "doctors" },
+  { name: "Doctor Management", icon: Stethoscope, tab: "doctors" },
   { name: "Featured Doctors", icon: Star, tab: "featured" },
-  { name: "Chambers", icon: MapPin, tab: "chambers" },
+  { name: "Hospitals", icon: Building2, tab: "hospitals" },
   { name: "Diagnostics", icon: Users, tab: "diagnostics" },
   { name: "Content", icon: FileText, tab: "content" },
   { name: "Comments", icon: MessageSquare, tab: "comments" },
@@ -323,15 +322,15 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button variant="healthcare" className="h-auto py-4 flex-col" onClick={() => setActiveTab("doctors")}>
                       <Stethoscope className="w-6 h-6 mb-2" />
-                      <span className="text-sm">Manage Doctors</span>
-                    </Button>
-                    <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("chambers")}>
-                      <MapPin className="w-6 h-6 mb-2" />
-                      <span className="text-sm">Manage Chambers</span>
+                      <span className="text-sm">Doctor Management</span>
                     </Button>
                     <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("hospitals")}>
                       <Building2 className="w-6 h-6 mb-2" />
                       <span className="text-sm">Manage Hospitals</span>
+                    </Button>
+                    <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("featured")}>
+                      <Star className="w-6 h-6 mb-2" />
+                      <span className="text-sm">Featured Doctors</span>
                     </Button>
                     <Button variant="healthcare-outline" className="h-auto py-4 flex-col" onClick={() => setActiveTab("content")}>
                       <FileText className="w-6 h-6 mb-2" />
@@ -345,9 +344,6 @@ export default function AdminDashboard() {
 
           {/* Doctors Tab */}
           {activeTab === "doctors" && <DoctorManager />}
-
-          {/* Chambers Tab */}
-          {activeTab === "chambers" && <DoctorChamberManager />}
 
           {/* Hospitals Tab */}
           {activeTab === "hospitals" && <HospitalManager />}

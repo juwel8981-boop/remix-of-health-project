@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Edit, CheckCircle2, XCircle, Clock,
-  Stethoscope, Eye, AlertCircle, Plus, Trash2, MapPin, Power, PowerOff
+  Search, Edit, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp,
+  Stethoscope, Eye, AlertCircle, Plus, Trash2, MapPin, Power, PowerOff,
+  Phone, Calendar, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -31,8 +32,23 @@ interface Doctor {
   is_active: boolean;
 }
 
+interface Chamber {
+  id: string;
+  doctor_id: string;
+  name: string;
+  address: string;
+  phone: string | null;
+  days: string[] | null;
+  timing: string | null;
+  appointment_fee: string | null;
+  serial_available: boolean | null;
+}
+
+const daysOfWeek = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
 export default function DoctorManager() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [chambers, setChambers] = useState<Record<string, Chamber[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -43,8 +59,14 @@ export default function DoctorManager() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
+  const [expandedDoctor, setExpandedDoctor] = useState<string | null>(null);
   const [showChamberDialog, setShowChamberDialog] = useState(false);
   const [selectedDoctorForChamber, setSelectedDoctorForChamber] = useState<Doctor | null>(null);
+  const [editingChamber, setEditingChamber] = useState<Chamber | null>(null);
+  const [chamberToDelete, setChamberToDelete] = useState<Chamber | null>(null);
+  const [showEditDoctorDialog, setShowEditDoctorDialog] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  
   const [newDoctorForm, setNewDoctorForm] = useState({
     full_name: "",
     email: "",
@@ -54,6 +76,7 @@ export default function DoctorManager() {
     experience_years: "",
     hospital_affiliation: "",
   });
+  
   const [chamberForm, setChamberForm] = useState({
     name: "",
     address: "",
@@ -63,6 +86,7 @@ export default function DoctorManager() {
     days: [] as string[],
     serial_available: true,
   });
+  
   const [savingChamber, setSavingChamber] = useState(false);
 
   useEffect(() => {
@@ -82,15 +106,41 @@ export default function DoctorManager() {
       setDoctors([]);
     } else {
       setDoctors(data || []);
+      // Fetch chambers for all doctors
+      if (data && data.length > 0) {
+        fetchAllChambers(data.map(d => d.id));
+      }
     }
     setLoading(false);
+  };
+
+  const fetchAllChambers = async (doctorIds: string[]) => {
+    const { data, error } = await supabase
+      .from("doctor_chambers")
+      .select("*")
+      .in("doctor_id", doctorIds);
+
+    if (error) {
+      console.error("Failed to fetch chambers:", error);
+      return;
+    }
+
+    const chambersByDoctor: Record<string, Chamber[]> = {};
+    (data || []).forEach((chamber) => {
+      if (!chambersByDoctor[chamber.doctor_id]) {
+        chambersByDoctor[chamber.doctor_id] = [];
+      }
+      chambersByDoctor[chamber.doctor_id].push(chamber);
+    });
+    setChambers(chambersByDoctor);
   };
 
   const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch =
       doctor.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doctor.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.registration_number.toLowerCase().includes(searchQuery.toLowerCase());
+      doctor.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doctor.specialization.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "all" || doctor.verification_status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -98,8 +148,7 @@ export default function DoctorManager() {
   const pendingCount = doctors.filter(d => d.verification_status === "pending").length;
   const approvedCount = doctors.filter(d => d.verification_status === "approved").length;
   const rejectedCount = doctors.filter(d => d.verification_status === "rejected").length;
-  const activeCount = doctors.filter(d => d.verification_status === "approved" && d.is_active).length;
-  const inactiveCount = doctors.filter(d => d.verification_status === "approved" && !d.is_active).length;
+  const totalChambers = Object.values(chambers).flat().length;
 
   const sendVerificationEmail = async (doctor: Doctor, status: "approved" | "rejected", reason?: string) => {
     try {
@@ -222,6 +271,56 @@ export default function DoctorManager() {
     }
   };
 
+  const handleEditDoctor = async () => {
+    if (!editingDoctor) return;
+    
+    const { error } = await supabase
+      .from("doctors")
+      .update({
+        full_name: newDoctorForm.full_name,
+        email: newDoctorForm.email,
+        phone: newDoctorForm.phone || null,
+        specialization: newDoctorForm.specialization,
+        registration_number: newDoctorForm.registration_number,
+        experience_years: newDoctorForm.experience_years ? parseInt(newDoctorForm.experience_years) : null,
+        hospital_affiliation: newDoctorForm.hospital_affiliation || null,
+      })
+      .eq("id", editingDoctor.id);
+
+    if (error) {
+      toast.error("Failed to update doctor");
+      console.error(error);
+    } else {
+      toast.success("Doctor updated successfully");
+      setShowEditDoctorDialog(false);
+      setEditingDoctor(null);
+      setNewDoctorForm({
+        full_name: "",
+        email: "",
+        phone: "",
+        specialization: "",
+        registration_number: "",
+        experience_years: "",
+        hospital_affiliation: "",
+      });
+      fetchDoctors();
+    }
+  };
+
+  const openEditDoctorDialog = (doctor: Doctor) => {
+    setEditingDoctor(doctor);
+    setNewDoctorForm({
+      full_name: doctor.full_name,
+      email: doctor.email,
+      phone: doctor.phone || "",
+      specialization: doctor.specialization,
+      registration_number: doctor.registration_number,
+      experience_years: doctor.experience_years?.toString() || "",
+      hospital_affiliation: doctor.hospital_affiliation || "",
+    });
+    setShowEditDoctorDialog(true);
+  };
+
   const handleDeleteDoctor = async () => {
     if (!doctorToDelete) return;
 
@@ -259,8 +358,10 @@ export default function DoctorManager() {
     setProcessingId(null);
   };
 
-  const openChamberDialog = (doctor: Doctor) => {
+  // Chamber functions
+  const openAddChamberDialog = (doctor: Doctor) => {
     setSelectedDoctorForChamber(doctor);
+    setEditingChamber(null);
     setChamberForm({
       name: "",
       address: "",
@@ -273,7 +374,22 @@ export default function DoctorManager() {
     setShowChamberDialog(true);
   };
 
-  const handleAddChamber = async () => {
+  const openEditChamberDialog = (doctor: Doctor, chamber: Chamber) => {
+    setSelectedDoctorForChamber(doctor);
+    setEditingChamber(chamber);
+    setChamberForm({
+      name: chamber.name,
+      address: chamber.address,
+      phone: chamber.phone || "",
+      timing: chamber.timing || "",
+      appointment_fee: chamber.appointment_fee || "",
+      days: chamber.days || [],
+      serial_available: chamber.serial_available ?? true,
+    });
+    setShowChamberDialog(true);
+  };
+
+  const handleSaveChamber = async () => {
     if (!chamberForm.name || !chamberForm.address) {
       toast.error("Please fill chamber name and address");
       return;
@@ -285,37 +401,85 @@ export default function DoctorManager() {
     }
 
     setSavingChamber(true);
-    
-    const { error } = await supabase.from("doctor_chambers").insert({
-      doctor_id: selectedDoctorForChamber.id,
-      name: chamberForm.name,
-      address: chamberForm.address,
-      phone: chamberForm.phone || null,
-      timing: chamberForm.timing || null,
-      appointment_fee: chamberForm.appointment_fee || null,
-      days: chamberForm.days,
-      serial_available: chamberForm.serial_available,
-    });
 
-    setSavingChamber(false);
+    if (editingChamber) {
+      // Update existing chamber
+      const { error } = await supabase
+        .from("doctor_chambers")
+        .update({
+          name: chamberForm.name,
+          address: chamberForm.address,
+          phone: chamberForm.phone || null,
+          timing: chamberForm.timing || null,
+          appointment_fee: chamberForm.appointment_fee || null,
+          days: chamberForm.days,
+          serial_available: chamberForm.serial_available,
+        })
+        .eq("id", editingChamber.id);
 
-    if (error) {
-      console.error("Error saving chamber:", error);
-      toast.error("Failed to save chamber. Please try again.");
-      return;
+      setSavingChamber(false);
+
+      if (error) {
+        console.error("Error updating chamber:", error);
+        toast.error("Failed to update chamber");
+        return;
+      }
+
+      toast.success(`Chamber "${chamberForm.name}" updated`);
+    } else {
+      // Add new chamber
+      const { error } = await supabase.from("doctor_chambers").insert({
+        doctor_id: selectedDoctorForChamber.id,
+        name: chamberForm.name,
+        address: chamberForm.address,
+        phone: chamberForm.phone || null,
+        timing: chamberForm.timing || null,
+        appointment_fee: chamberForm.appointment_fee || null,
+        days: chamberForm.days,
+        serial_available: chamberForm.serial_available,
+      });
+
+      setSavingChamber(false);
+
+      if (error) {
+        console.error("Error saving chamber:", error);
+        toast.error("Failed to save chamber");
+        return;
+      }
+
+      toast.success(`Chamber "${chamberForm.name}" added for ${selectedDoctorForChamber.full_name}`);
     }
 
-    toast.success(`Chamber "${chamberForm.name}" added for ${selectedDoctorForChamber.full_name}`);
     setShowChamberDialog(false);
-    setChamberForm({
-      name: "",
-      address: "",
-      phone: "",
-      timing: "",
-      appointment_fee: "",
-      days: [],
-      serial_available: true,
-    });
+    setEditingChamber(null);
+    fetchAllChambers(doctors.map(d => d.id));
+  };
+
+  const handleDeleteChamber = async () => {
+    if (!chamberToDelete) return;
+
+    const { error } = await supabase
+      .from("doctor_chambers")
+      .delete()
+      .eq("id", chamberToDelete.id);
+
+    if (error) {
+      toast.error("Failed to delete chamber");
+      console.error(error);
+    } else {
+      toast.success("Chamber deleted");
+      fetchAllChambers(doctors.map(d => d.id));
+    }
+    setChamberToDelete(null);
+  };
+
+  const toggleDay = (day: string) => {
+    setChamberForm(prev => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter(d => d !== day)
+        : [...prev.days, day],
+    }));
   };
 
   const getStatusBadge = (status: string) => {
@@ -358,7 +522,7 @@ export default function DoctorManager() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-foreground">Doctor Management</h2>
-          <p className="text-muted-foreground">Add, verify, and manage doctor profiles</p>
+          <p className="text-muted-foreground">Manage doctors, verification, and their chamber locations</p>
         </div>
         <Button variant="healthcare" onClick={() => setShowAddDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -367,7 +531,7 @@ export default function DoctorManager() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -401,6 +565,17 @@ export default function DoctorManager() {
             </div>
           </div>
         </div>
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-primary">{totalChambers}</p>
+              <p className="text-sm text-primary/80">Total Chambers</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -408,7 +583,7 @@ export default function DoctorManager() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, or registration number..."
+            placeholder="Search by name, email, specialization, or registration..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -427,99 +602,54 @@ export default function DoctorManager() {
         </Select>
       </div>
 
-      {/* Doctors Table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted">
-              <tr>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Doctor</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Specialization</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Registration #</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Active</th>
-                <th className="text-right py-4 px-4 text-sm font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDoctors.map((doctor) => (
-                <motion.tr
-                  key={doctor.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="border-t border-border hover:bg-muted/50 transition-colors"
-                >
-                  <td className="py-4 px-4">
-                    <div>
-                      <p className="font-medium text-foreground">{doctor.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{doctor.email}</p>
+      {/* Doctors List with Expandable Chambers */}
+      <div className="space-y-4">
+        {filteredDoctors.map((doctor) => {
+          const doctorChambers = chambers[doctor.id] || [];
+          const isExpanded = expandedDoctor === doctor.id;
+
+          return (
+            <motion.div
+              key={doctor.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-xl overflow-hidden"
+            >
+              {/* Doctor Row */}
+              <div className="p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                  {/* Doctor Info */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Stethoscope className="w-6 h-6 text-primary" />
                     </div>
-                  </td>
-                  <td className="py-4 px-4 text-foreground">{doctor.specialization}</td>
-                  <td className="py-4 px-4 text-muted-foreground font-mono text-sm">
-                    {doctor.registration_number}
-                  </td>
-                  <td className="py-4 px-4">
-                    {getStatusBadge(doctor.verification_status)}
-                    {doctor.rejection_reason && (
-                      <p className="text-xs text-muted-foreground mt-1 max-w-[200px] truncate">
-                        {doctor.rejection_reason}
-                      </p>
-                    )}
-                  </td>
-                  <td className="py-4 px-4">
-                    {doctor.verification_status === "approved" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={doctor.is_active 
-                          ? "text-green-600 hover:text-green-700 hover:bg-green-100" 
-                          : "text-gray-500 hover:text-gray-600 hover:bg-gray-100"
-                        }
-                        onClick={() => handleToggleActive(doctor)}
-                        disabled={processingId === doctor.id}
-                      >
-                        {doctor.is_active ? (
-                          <>
-                            <Power className="w-4 h-4 mr-1" />
-                            Active
-                          </>
-                        ) : (
-                          <>
-                            <PowerOff className="w-4 h-4 mr-1" />
-                            Inactive
-                          </>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground truncate">{doctor.full_name}</h3>
+                        {getStatusBadge(doctor.verification_status)}
+                        {doctor.verification_status === "approved" && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            doctor.is_active 
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          }`}>
+                            {doctor.is_active ? <Power className="w-3 h-3" /> : <PowerOff className="w-3 h-3" />}
+                            {doctor.is_active ? "Active" : "Inactive"}
+                          </span>
                         )}
-                      </Button>
-                    )}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex justify-end gap-2">
-                      {doctor.verification_status === "pending" && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-100"
-                            onClick={() => handleApprove(doctor)}
-                            disabled={processingId === doctor.id}
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-100"
-                            onClick={() => openRejectDialog(doctor)}
-                            disabled={processingId === doctor.id}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                      {doctor.verification_status === "rejected" && (
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{doctor.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {doctor.specialization} • {doctor.registration_number}
+                        {doctor.experience_years && ` • ${doctor.experience_years} yrs exp`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {doctor.verification_status === "pending" && (
+                      <>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -530,8 +660,6 @@ export default function DoctorManager() {
                           <CheckCircle2 className="w-4 h-4 mr-1" />
                           Approve
                         </Button>
-                      )}
-                      {doctor.verification_status === "approved" && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -540,48 +668,180 @@ export default function DoctorManager() {
                           disabled={processingId === doctor.id}
                         >
                           <XCircle className="w-4 h-4 mr-1" />
-                          Revoke
+                          Reject
                         </Button>
+                      </>
+                    )}
+                    {doctor.verification_status === "approved" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={doctor.is_active 
+                          ? "text-amber-600 hover:text-amber-700 hover:bg-amber-100" 
+                          : "text-green-600 hover:text-green-700 hover:bg-green-100"
+                        }
+                        onClick={() => handleToggleActive(doctor)}
+                        disabled={processingId === doctor.id}
+                      >
+                        {doctor.is_active ? <PowerOff className="w-4 h-4 mr-1" /> : <Power className="w-4 h-4 mr-1" />}
+                        {doctor.is_active ? "Hide" : "Show"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedDoctor(doctor)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDoctorDialog(doctor)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                      onClick={() => {
+                        setDoctorToDelete(doctor);
+                        setShowDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setExpandedDoctor(isExpanded ? null : doctor.id)}
+                    >
+                      <MapPin className="w-4 h-4 mr-1" />
+                      Chambers ({doctorChambers.length})
+                      {isExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {doctor.rejection_reason && doctor.verification_status === "rejected" && (
+                  <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-700 dark:text-red-400">
+                      <strong>Rejection Reason:</strong> {doctor.rejection_reason}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Chambers Section */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-border overflow-hidden"
+                  >
+                    <div className="p-4 bg-muted/30 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-foreground">Chamber Locations</h4>
+                        <Button
+                          variant="healthcare"
+                          size="sm"
+                          onClick={() => openAddChamberDialog(doctor)}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Chamber
+                        </Button>
+                      </div>
+
+                      {doctorChambers.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          No chambers added yet. Add a chamber location for this doctor.
+                        </p>
+                      ) : (
+                        <div className="grid gap-3">
+                          {doctorChambers.map((chamber) => (
+                            <div
+                              key={chamber.id}
+                              className="p-4 rounded-xl bg-background border border-border"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-semibold text-foreground flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                                    {chamber.name}
+                                  </h5>
+                                  <p className="text-sm text-muted-foreground mt-1">{chamber.address}</p>
+                                  
+                                  <div className="grid sm:grid-cols-2 gap-2 mt-3 text-sm">
+                                    {chamber.days && chamber.days.length > 0 && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Calendar className="w-4 h-4 flex-shrink-0" />
+                                        <span className="truncate">{chamber.days.join(", ")}</span>
+                                      </div>
+                                    )}
+                                    {chamber.timing && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Clock className="w-4 h-4 flex-shrink-0" />
+                                        <span>{chamber.timing}</span>
+                                      </div>
+                                    )}
+                                    {chamber.phone && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Phone className="w-4 h-4 flex-shrink-0" />
+                                        <span>{chamber.phone}</span>
+                                      </div>
+                                    )}
+                                    {chamber.appointment_fee && (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">Fee:</span>
+                                        <span className="font-semibold text-foreground">{chamber.appointment_fee}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {chamber.serial_available && (
+                                    <span className="inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                      Serial Available
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => openEditChamberDialog(doctor, chamber)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                    onClick={() => setChamberToDelete(chamber)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedDoctor(doctor)}
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-primary border-primary hover:bg-primary hover:text-white"
-                        onClick={() => openChamberDialog(doctor)}
-                        title="Add chamber location"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add Chamber
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                        onClick={() => {
-                          setDoctorToDelete(doctor);
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
 
         {filteredDoctors.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-card border border-border rounded-xl">
             <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
               {doctors.length === 0 
@@ -635,22 +895,6 @@ export default function DoctorManager() {
                   <Label className="text-muted-foreground">Status</Label>
                   <div className="mt-1">{getStatusBadge(selectedDoctor.verification_status)}</div>
                 </div>
-                {selectedDoctor.rejection_reason && (
-                  <div className="col-span-2">
-                    <Label className="text-muted-foreground">Rejection Reason</Label>
-                    <p className="font-medium text-red-600">{selectedDoctor.rejection_reason}</p>
-                  </div>
-                )}
-                <div className="col-span-2">
-                  <Label className="text-muted-foreground">Registered On</Label>
-                  <p className="font-medium">
-                    {new Date(selectedDoctor.created_at).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
               </div>
               <DialogFooter className="gap-2">
                 {selectedDoctor.verification_status !== "approved" && (
@@ -669,9 +913,7 @@ export default function DoctorManager() {
                 {selectedDoctor.verification_status !== "rejected" && (
                   <Button
                     variant="destructive"
-                    onClick={() => {
-                      setShowRejectDialog(true);
-                    }}
+                    onClick={() => setShowRejectDialog(true)}
                   >
                     <XCircle className="w-4 h-4 mr-2" />
                     Reject
@@ -695,7 +937,6 @@ export default function DoctorManager() {
           <div className="space-y-4">
             <p className="text-muted-foreground">
               Please provide a reason for rejecting <strong>{selectedDoctor?.full_name}</strong>'s application.
-              This will be visible to the doctor.
             </p>
             <div>
               <Label>Rejection Reason</Label>
@@ -708,9 +949,7 @@ export default function DoctorManager() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
             <Button 
               variant="destructive" 
               onClick={handleReject}
@@ -800,13 +1039,91 @@ export default function DoctorManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Edit Doctor Dialog */}
+      <Dialog open={showEditDoctorDialog} onOpenChange={setShowEditDoctorDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Doctor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Full Name *</Label>
+                <Input
+                  value={newDoctorForm.full_name}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  placeholder="Dr. Full Name"
+                />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={newDoctorForm.email}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="doctor@email.com"
+                />
+              </div>
+              <div>
+                <Label>Phone</Label>
+                <Input
+                  value={newDoctorForm.phone}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+880 XXXX-XXXXXX"
+                />
+              </div>
+              <div>
+                <Label>Specialization *</Label>
+                <Input
+                  value={newDoctorForm.specialization}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, specialization: e.target.value }))}
+                  placeholder="e.g., Cardiologist"
+                />
+              </div>
+              <div>
+                <Label>Registration Number *</Label>
+                <Input
+                  value={newDoctorForm.registration_number}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, registration_number: e.target.value }))}
+                  placeholder="BMDC-XXXXX"
+                />
+              </div>
+              <div>
+                <Label>Experience (Years)</Label>
+                <Input
+                  type="number"
+                  value={newDoctorForm.experience_years}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, experience_years: e.target.value }))}
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <Label>Hospital Affiliation</Label>
+                <Input
+                  value={newDoctorForm.hospital_affiliation}
+                  onChange={(e) => setNewDoctorForm(prev => ({ ...prev, hospital_affiliation: e.target.value }))}
+                  placeholder="e.g., Square Hospital"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDoctorDialog(false)}>Cancel</Button>
+            <Button variant="healthcare" onClick={handleEditDoctor}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Doctor Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Doctor</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{doctorToDelete?.full_name}</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>{doctorToDelete?.full_name}</strong>? This will also delete all their chambers. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -821,11 +1138,34 @@ export default function DoctorManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Add Chamber Dialog */}
+      {/* Delete Chamber Dialog */}
+      <AlertDialog open={chamberToDelete !== null} onOpenChange={() => setChamberToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Chamber</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the chamber "{chamberToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteChamber}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add/Edit Chamber Dialog */}
       <Dialog open={showChamberDialog} onOpenChange={setShowChamberDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Chamber for {selectedDoctorForChamber?.full_name}</DialogTitle>
+            <DialogTitle>
+              {editingChamber ? "Edit Chamber" : "Add Chamber"} for {selectedDoctorForChamber?.full_name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -874,20 +1214,13 @@ export default function DoctorManager() {
             <div>
               <Label>Available Days</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => (
+                {daysOfWeek.map((day) => (
                   <Button
                     key={day}
                     type="button"
                     variant={chamberForm.days.includes(day) ? "default" : "outline"}
                     size="sm"
-                    onClick={() => {
-                      setChamberForm(prev => ({
-                        ...prev,
-                        days: prev.days.includes(day)
-                          ? prev.days.filter(d => d !== day)
-                          : [...prev.days, day]
-                      }));
-                    }}
+                    onClick={() => toggleDay(day)}
                   >
                     {day.substring(0, 3)}
                   </Button>
@@ -900,27 +1233,16 @@ export default function DoctorManager() {
                 id="serialAvailable"
                 checked={chamberForm.serial_available}
                 onChange={(e) => setChamberForm(prev => ({ ...prev, serial_available: e.target.checked }))}
-                className="h-4 w-4 rounded border-gray-300"
+                className="rounded border-border"
               />
-              <Label htmlFor="serialAvailable" className="cursor-pointer">
-                Serial Available
-              </Label>
+              <Label htmlFor="serialAvailable" className="cursor-pointer">Serial Available</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowChamberDialog(false)}>Cancel</Button>
-            <Button variant="healthcare" onClick={handleAddChamber} disabled={savingChamber}>
-              {savingChamber ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Chamber
-                </>
-              )}
+            <Button variant="healthcare" onClick={handleSaveChamber} disabled={savingChamber}>
+              <Save className="w-4 h-4 mr-2" />
+              {savingChamber ? "Saving..." : (editingChamber ? "Update Chamber" : "Add Chamber")}
             </Button>
           </DialogFooter>
         </DialogContent>
