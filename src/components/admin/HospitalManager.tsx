@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Search, Plus, Edit, Trash2, CheckCircle2, XCircle, 
@@ -10,21 +10,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Hospital {
-  id: number;
+  id: string;
   name: string;
   type: string;
   location: string;
   address: string;
-  phone: string;
-  rating: number;
-  beds: number;
-  specialties: string[];
-  status: "approved" | "pending" | "rejected";
-  image: string;
-  coordinates: { lat: number; lng: number };
+  phone: string | null;
+  rating: number | null;
+  beds: number | null;
+  specialties: string[] | null;
+  status: string;
+  image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
 }
 
 const locations = ["Dhaka", "Chittagong", "Sylhet", "Rajshahi", "Khulna", "Barisal", "Rangpur"];
@@ -35,59 +39,39 @@ const allSpecialties = [
   "Oncology", "Nephrology", "Dermatology", "ENT"
 ];
 
-const initialHospitals: Hospital[] = [
-  {
-    id: 1,
-    name: "Square Hospital",
-    type: "Private",
-    location: "Dhaka",
-    address: "18/F, Bir Uttam Qazi Nuruzzaman Sarak, West Panthapath, Dhaka 1205",
-    phone: "+880 2-8144400",
-    rating: 4.8,
-    beds: 400,
-    specialties: ["Cardiology", "Neurology", "Orthopedics", "Oncology"],
-    status: "approved",
-    image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800",
-    coordinates: { lat: 23.7505, lng: 90.3812 },
-  },
-  {
-    id: 2,
-    name: "United Hospital",
-    type: "Private",
-    location: "Dhaka",
-    address: "Plot 15, Road 71, Gulshan, Dhaka 1212",
-    phone: "+880 2-8431661",
-    rating: 4.7,
-    beds: 450,
-    specialties: ["Cardiology", "Gynecology", "General Surgery", "ICU"],
-    status: "approved",
-    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800",
-    coordinates: { lat: 23.7957, lng: 90.4149 },
-  },
-  {
-    id: 3,
-    name: "City General Hospital",
-    type: "Private",
-    location: "Rajshahi",
-    address: "Station Road, Rajshahi",
-    phone: "+880 721-774411",
-    rating: 4.2,
-    beds: 250,
-    specialties: ["General Surgery", "Emergency", "Pediatrics"],
-    status: "pending",
-    image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=800",
-    coordinates: { lat: 24.3745, lng: 88.6042 },
-  },
-];
-
 export default function HospitalManager() {
-  const [hospitals, setHospitals] = useState<Hospital[]>(initialHospitals);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [editingHospital, setEditingHospital] = useState<Hospital | null>(null);
   const [isAddingHospital, setIsAddingHospital] = useState(false);
   const [hospitalForm, setHospitalForm] = useState<Partial<Hospital>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [hospitalToDelete, setHospitalToDelete] = useState<Hospital | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchHospitals();
+  }, []);
+
+  const fetchHospitals = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("hospitals")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to fetch hospitals");
+      console.error(error);
+      setHospitals([]);
+    } else {
+      setHospitals(data || []);
+    }
+    setLoading(false);
+  };
 
   const filteredHospitals = hospitals.filter((hospital) => {
     const matchesSearch =
@@ -98,6 +82,9 @@ export default function HospitalManager() {
     return matchesSearch && matchesLocation && matchesStatus;
   });
 
+  const pendingCount = hospitals.filter(h => h.status === "pending").length;
+  const approvedCount = hospitals.filter(h => h.status === "approved").length;
+
   const handleEditHospital = (hospital: Hospital) => {
     setEditingHospital(hospital);
     setHospitalForm({ ...hospital });
@@ -107,7 +94,7 @@ export default function HospitalManager() {
     setIsAddingHospital(true);
     setHospitalForm({
       name: "",
-      type: "",
+      type: "Private",
       location: "",
       address: "",
       phone: "",
@@ -115,46 +102,107 @@ export default function HospitalManager() {
       beds: 0,
       specialties: [],
       status: "pending",
-      image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800",
-      coordinates: { lat: 23.8103, lng: 90.4125 },
+      image_url: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800",
     });
   };
 
-  const handleSaveHospital = () => {
+  const handleSaveHospital = async () => {
+    if (!hospitalForm.name || !hospitalForm.location || !hospitalForm.address) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
     if (editingHospital) {
-      setHospitals((prev) =>
-        prev.map((h) => (h.id === editingHospital.id ? { ...h, ...hospitalForm } as Hospital : h))
-      );
+      setProcessingId(editingHospital.id);
+      const { error } = await supabase
+        .from("hospitals")
+        .update({
+          name: hospitalForm.name,
+          type: hospitalForm.type || "Private",
+          location: hospitalForm.location,
+          address: hospitalForm.address,
+          phone: hospitalForm.phone || null,
+          rating: hospitalForm.rating || 0,
+          beds: hospitalForm.beds || 0,
+          specialties: hospitalForm.specialties || [],
+          status: hospitalForm.status || "pending",
+          image_url: hospitalForm.image_url || null,
+        })
+        .eq("id", editingHospital.id);
+
+      if (error) {
+        toast.error("Failed to update hospital");
+        console.error(error);
+      } else {
+        toast.success("Hospital updated successfully");
+        fetchHospitals();
+      }
       setEditingHospital(null);
+      setProcessingId(null);
     } else if (isAddingHospital) {
-      const newHospital: Hospital = {
-        id: Date.now(),
-        name: hospitalForm.name || "",
-        type: hospitalForm.type || "",
-        location: hospitalForm.location || "",
-        address: hospitalForm.address || "",
-        phone: hospitalForm.phone || "",
-        rating: hospitalForm.rating || 0,
-        beds: hospitalForm.beds || 0,
-        specialties: hospitalForm.specialties || [],
-        status: hospitalForm.status || "pending",
-        image: hospitalForm.image || "",
-        coordinates: hospitalForm.coordinates || { lat: 23.8103, lng: 90.4125 },
-      };
-      setHospitals((prev) => [newHospital, ...prev]);
+      const { error } = await supabase
+        .from("hospitals")
+        .insert({
+          name: hospitalForm.name,
+          type: hospitalForm.type || "Private",
+          location: hospitalForm.location,
+          address: hospitalForm.address,
+          phone: hospitalForm.phone || null,
+          rating: hospitalForm.rating || 0,
+          beds: hospitalForm.beds || 0,
+          specialties: hospitalForm.specialties || [],
+          status: hospitalForm.status || "pending",
+          image_url: hospitalForm.image_url || null,
+        });
+
+      if (error) {
+        toast.error("Failed to add hospital");
+        console.error(error);
+      } else {
+        toast.success("Hospital added successfully");
+        fetchHospitals();
+      }
       setIsAddingHospital(false);
     }
     setHospitalForm({});
   };
 
-  const handleDeleteHospital = (id: number) => {
-    setHospitals((prev) => prev.filter((h) => h.id !== id));
+  const handleDeleteHospital = async () => {
+    if (!hospitalToDelete) return;
+
+    setProcessingId(hospitalToDelete.id);
+    const { error } = await supabase
+      .from("hospitals")
+      .delete()
+      .eq("id", hospitalToDelete.id);
+
+    if (error) {
+      toast.error("Failed to delete hospital");
+      console.error(error);
+    } else {
+      toast.success("Hospital deleted successfully");
+      fetchHospitals();
+    }
+    setDeleteDialogOpen(false);
+    setHospitalToDelete(null);
+    setProcessingId(null);
   };
 
-  const handleStatusChange = (id: number, status: "approved" | "pending" | "rejected") => {
-    setHospitals((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, status } : h))
-    );
+  const handleStatusChange = async (hospital: Hospital, status: string) => {
+    setProcessingId(hospital.id);
+    const { error } = await supabase
+      .from("hospitals")
+      .update({ status })
+      .eq("id", hospital.id);
+
+    if (error) {
+      toast.error("Failed to update status");
+      console.error(error);
+    } else {
+      toast.success(`Hospital ${status === "approved" ? "approved" : "rejected"}`);
+      fetchHospitals();
+    }
+    setProcessingId(null);
   };
 
   const toggleSpecialty = (specialty: string) => {
@@ -165,6 +213,14 @@ export default function HospitalManager() {
         : [...(prev.specialties || []), specialty],
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -178,6 +234,22 @@ export default function HospitalManager() {
           <Plus className="w-4 h-4 mr-2" />
           Add Hospital
         </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-foreground">{hospitals.length}</p>
+          <p className="text-sm text-muted-foreground">Total Hospitals</p>
+        </div>
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+          <p className="text-sm text-muted-foreground">Pending</p>
+        </div>
+        <div className="healthcare-card text-center">
+          <p className="text-2xl font-bold text-healthcare-green">{approvedCount}</p>
+          <p className="text-sm text-muted-foreground">Approved</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -226,7 +298,7 @@ export default function HospitalManager() {
           >
             <div className="aspect-video relative">
               <img
-                src={hospital.image}
+                src={hospital.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=800"}
                 alt={hospital.name}
                 className="w-full h-full object-cover"
               />
@@ -248,7 +320,7 @@ export default function HospitalManager() {
                 <h3 className="font-semibold text-foreground">{hospital.name}</h3>
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-accent fill-accent" />
-                  <span className="font-medium text-foreground">{hospital.rating}</span>
+                  <span className="font-medium text-foreground">{hospital.rating || 0}</span>
                 </div>
               </div>
               
@@ -259,23 +331,25 @@ export default function HospitalManager() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Bed className="w-4 h-4" />
-                  <span>{hospital.beds} beds</span>
+                  <span>{hospital.beds || 0} beds</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>{hospital.phone}</span>
-                </div>
+                {hospital.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    <span>{hospital.phone}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-1 mb-4">
-                {hospital.specialties.slice(0, 3).map((s) => (
+                {(hospital.specialties || []).slice(0, 3).map((s) => (
                   <span key={s} className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
                     {s}
                   </span>
                 ))}
-                {hospital.specialties.length > 3 && (
+                {(hospital.specialties || []).length > 3 && (
                   <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
-                    +{hospital.specialties.length - 3} more
+                    +{(hospital.specialties || []).length - 3} more
                   </span>
                 )}
               </div>
@@ -287,7 +361,8 @@ export default function HospitalManager() {
                       variant="ghost"
                       size="sm"
                       className="flex-1 text-healthcare-green"
-                      onClick={() => handleStatusChange(hospital.id, "approved")}
+                      onClick={() => handleStatusChange(hospital, "approved")}
+                      disabled={processingId === hospital.id}
                     >
                       <CheckCircle2 className="w-4 h-4 mr-1" />
                       Approve
@@ -296,7 +371,8 @@ export default function HospitalManager() {
                       variant="ghost"
                       size="sm"
                       className="flex-1 text-destructive"
-                      onClick={() => handleStatusChange(hospital.id, "rejected")}
+                      onClick={() => handleStatusChange(hospital, "rejected")}
+                      disabled={processingId === hospital.id}
                     >
                       <XCircle className="w-4 h-4 mr-1" />
                       Reject
@@ -315,7 +391,10 @@ export default function HospitalManager() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-destructive"
-                  onClick={() => handleDeleteHospital(hospital.id)}
+                  onClick={() => {
+                    setHospitalToDelete(hospital);
+                    setDeleteDialogOpen(true);
+                  }}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -331,6 +410,24 @@ export default function HospitalManager() {
           <p className="text-muted-foreground">No hospitals found matching your criteria.</p>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Hospital</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{hospitalToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteHospital} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit/Add Hospital Dialog */}
       <Dialog
@@ -350,7 +447,7 @@ export default function HospitalManager() {
 
           <div className="space-y-4">
             <div>
-              <Label>Hospital Name</Label>
+              <Label>Hospital Name *</Label>
               <Input
                 value={hospitalForm.name || ""}
                 onChange={(e) => setHospitalForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -362,7 +459,7 @@ export default function HospitalManager() {
               <div>
                 <Label>Type</Label>
                 <Select
-                  value={hospitalForm.type || ""}
+                  value={hospitalForm.type || "Private"}
                   onValueChange={(value) => setHospitalForm((prev) => ({ ...prev, type: value }))}
                 >
                   <SelectTrigger>
@@ -376,7 +473,7 @@ export default function HospitalManager() {
                 </Select>
               </div>
               <div>
-                <Label>Location</Label>
+                <Label>Location *</Label>
                 <Select
                   value={hospitalForm.location || ""}
                   onValueChange={(value) => setHospitalForm((prev) => ({ ...prev, location: value }))}
@@ -394,7 +491,7 @@ export default function HospitalManager() {
             </div>
 
             <div>
-              <Label>Full Address</Label>
+              <Label>Full Address *</Label>
               <Textarea
                 value={hospitalForm.address || ""}
                 onChange={(e) => setHospitalForm((prev) => ({ ...prev, address: e.target.value }))}
@@ -426,8 +523,8 @@ export default function HospitalManager() {
             <div>
               <Label>Image URL</Label>
               <Input
-                value={hospitalForm.image || ""}
-                onChange={(e) => setHospitalForm((prev) => ({ ...prev, image: e.target.value }))}
+                value={hospitalForm.image_url || ""}
+                onChange={(e) => setHospitalForm((prev) => ({ ...prev, image_url: e.target.value }))}
                 placeholder="https://..."
               />
             </div>
@@ -455,7 +552,7 @@ export default function HospitalManager() {
                 <Select
                   value={hospitalForm.status || "pending"}
                   onValueChange={(value) =>
-                    setHospitalForm((prev) => ({ ...prev, status: value as Hospital["status"] }))
+                    setHospitalForm((prev) => ({ ...prev, status: value }))
                   }
                 >
                   <SelectTrigger>
@@ -484,7 +581,7 @@ export default function HospitalManager() {
             </Button>
             <Button variant="healthcare" onClick={handleSaveHospital}>
               <Save className="w-4 h-4 mr-2" />
-              Save Hospital
+              {editingHospital ? "Save Changes" : "Add Hospital"}
             </Button>
           </DialogFooter>
         </DialogContent>
