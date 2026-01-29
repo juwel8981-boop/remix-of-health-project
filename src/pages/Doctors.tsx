@@ -629,8 +629,8 @@ export default function Doctors() {
   }, []);
 
   // Convert database doctors to display format
-  const databaseDoctorsFormatted = dbDoctors.map((doc, index) => ({
-    id: `db-${doc.id}`,
+  const databaseDoctorsFormatted = dbDoctors.map((doc) => ({
+    id: doc.id, // Use actual UUID for proper linking to DoctorProfile
     name: doc.full_name,
     specialty: doc.specialization,
     hospital: doc.hospital_affiliation || "Independent Practice",
@@ -642,6 +642,7 @@ export default function Doctors() {
     fee: "৳1,000",
     available: true,
     image: `https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face`,
+    isFromDatabase: true, // Flag to identify database doctors
   }));
 
   // Combine database doctors (shown first) with mock doctors
