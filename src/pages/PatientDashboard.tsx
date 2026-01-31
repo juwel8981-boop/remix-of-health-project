@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   User, FileText, Calendar, Bell, Activity, Pill, Upload, Clock,
-  Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2, Newspaper
+  Heart, TrendingUp, Plus, ChevronRight, Brain, Droplet, Ruler, Scale, Trash2, Edit2, Newspaper, Stethoscope
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -17,15 +17,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PatientHealthTracker } from "@/components/patient/PatientHealthTracker";
 import { PatientReminders } from "@/components/patient/PatientReminders";
 import { PatientMyArticles } from "@/components/patient/PatientMyArticles";
+import { PatientFavorites } from "@/components/patient/PatientFavorites";
 
-type TabType = "overview" | "health-tracker" | "reminders" | "my-articles";
+type TabType = "overview" | "health-tracker" | "reminders" | "my-articles" | "favorites";
 
 const sidebarLinks: { name: string; icon: typeof Activity; tab: TabType | null; href?: string }[] = [
   { name: "Overview", icon: Activity, tab: "overview" },
   { name: "My Profile", icon: User, tab: null, href: "/settings" },
   { name: "EHR Records", icon: FileText, tab: null, href: "/patient/ehr" },
   { name: "Appointments", icon: Calendar, tab: null, href: "/patient/appointments" },
-  { name: "Health Tracker", icon: Heart, tab: "health-tracker" },
+  { name: "My Favorites", icon: Heart, tab: "favorites" },
+  { name: "Health Tracker", icon: Stethoscope, tab: "health-tracker" },
   { name: "Reminders", icon: Bell, tab: "reminders" },
   { name: "My Articles", icon: Newspaper, tab: "my-articles" },
 ];
@@ -311,6 +313,8 @@ export default function PatientDashboard() {
         return <PatientReminders />;
       case "my-articles":
         return <PatientMyArticles />;
+      case "favorites":
+        return <PatientFavorites />;
       default:
         return renderOverview();
     }

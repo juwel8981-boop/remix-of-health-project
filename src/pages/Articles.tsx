@@ -253,6 +253,17 @@ export default function Articles() {
 
   const fetchPosts = async () => {
     try {
+      // Fetch all approved doctors to identify doctor authors
+      const { data: doctorsData } = await supabase
+        .from("doctors")
+        .select("user_id, full_name, specialization")
+        .eq("verification_status", "approved");
+
+      const doctorUserIds = new Set((doctorsData || []).map(d => d.user_id));
+      const doctorInfoMap = new Map(
+        (doctorsData || []).map(d => [d.user_id, { name: d.full_name, specialization: d.specialization }])
+      );
+
       const { data: postsData, error } = await supabase
         .from("health_posts")
         .select("*")
@@ -300,10 +311,17 @@ export default function Articles() {
             }
           }
 
+          // Check if author is a verified doctor
+          const isDoctor = doctorUserIds.has(post.user_id);
+          const doctorInfo = doctorInfoMap.get(post.user_id);
+          const authorRole = isDoctor 
+            ? `Verified Doctor • ${doctorInfo?.specialization || "Healthcare Professional"}`
+            : "Community Member";
+
           return {
             id: post.id,
             author: post.author_name,
-            authorRole: "Community Member",
+            authorRole,
             authorImage: post.author_avatar || "",
             authorId: post.user_id,
             content: content,
@@ -315,11 +333,21 @@ export default function Articles() {
             comments,
             feeling,
             originalPost,
+            isDoctor, // Add flag for sorting
           };
         })
       );
 
-      setPosts(postsWithComments);
+      // Sort posts: doctor posts first, then by time
+      const sortedPosts = postsWithComments.sort((a, b) => {
+        // First prioritize doctor posts
+        if ((a as any).isDoctor && !(b as any).isDoctor) return -1;
+        if (!(a as any).isDoctor && (b as any).isDoctor) return 1;
+        // Then sort by time (already sorted from DB, but maintain order within groups)
+        return 0;
+      });
+
+      setPosts(sortedPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to load posts");
@@ -1086,18 +1114,41 @@ export default function Articles() {
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={post.authorImage} />
-                        <AvatarFallback>{post.author[0]}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={post.authorImage} />
+                          <AvatarFallback>{post.author[0]}</AvatarFallback>
+                        </Avatar>
+                        {post.authorRole.includes("Verified Doctor") && (
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-card">
+                            <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-foreground">{post.author}</h3>
+                          {post.authorRole.includes("Verified Doctor") && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Verified Doctor
+                            </span>
+                          )}
                           {post.feeling && (
                             <span className="text-sm text-muted-foreground">is feeling {post.feeling}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {post.authorRole.includes("Verified Doctor") ? (
+                            <span className="text-primary/80">{post.authorRole.split("•")[1]?.trim() || "Healthcare Professional"}</span>
+                          ) : (
+                            <span>{post.authorRole}</span>
+                          )}
+                          <span>•</span>
                           <span>{post.time}</span>
                           <span>•</span>
                           <Globe className="w-3 h-3" />
