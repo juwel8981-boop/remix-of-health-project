@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, ArrowRight, Send } from "lucide-react";
+import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,18 @@ interface Doctor {
   experience_years: number | null;
   phone: string | null;
   verification_status: string;
+  is_active: boolean;
+  is_featured: boolean;
+  featured_rank: number | null;
+}
+
+interface Chamber {
+  id: string;
+  doctor_id: string;
+  name: string;
+  address: string;
+  appointment_fee: string | null;
+  days: string[] | null;
 }
 
 const specialties = [
@@ -55,554 +67,13 @@ const symptomKeywords: { keywords: string[]; specialty: string }[] = [
   { keywords: ["fever", "cold", "cough", "flu", "fatigue", "weakness", "general", "body ache", "infection"], specialty: "General Physician" },
 ];
 
-const doctors = [
-  // Cardiologists
-  {
-    id: 1,
-    name: "Dr. Fazle Rabbi Chowdhury",
-    specialty: "Cardiologist",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 234,
-    verified: true,
-    experience: "22 years",
-    fee: "৳2,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 2,
-    name: "Dr. Mir Jamal Uddin",
-    specialty: "Cardiologist",
-    hospital: "United Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 189,
-    verified: true,
-    experience: "18 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 3,
-    name: "Dr. Sohel Mahmud",
-    specialty: "Cardiologist",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 156,
-    verified: true,
-    experience: "15 years",
-    fee: "৳1,800",
-    available: false,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-  },
-  // Neurologists
-  {
-    id: 4,
-    name: "Dr. Quazi Deen Mohammad",
-    specialty: "Neurologist",
-    hospital: "National Institute of Neurosciences",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 312,
-    verified: true,
-    experience: "25 years",
-    fee: "৳2,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 5,
-    name: "Dr. Mohammad Shah Kamal",
-    specialty: "Neurologist",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 178,
-    verified: true,
-    experience: "16 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  // Pediatricians
-  {
-    id: 6,
-    name: "Dr. Syeda Afroza",
-    specialty: "Pediatrician",
-    hospital: "Dhaka Shishu Hospital",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 423,
-    verified: true,
-    experience: "20 years",
-    fee: "৳1,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 7,
-    name: "Dr. Md. Benzir Ahmed",
-    specialty: "Pediatrician",
-    hospital: "Apollo Hospital",
-    area: "Chittagong",
-    rating: 4.8,
-    reviews: 198,
-    verified: true,
-    experience: "14 years",
-    fee: "৳1,200",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 8,
-    name: "Dr. Farhana Haque",
-    specialty: "Pediatrician",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 145,
-    verified: true,
-    experience: "10 years",
-    fee: "৳1,000",
-    available: false,
-    image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face",
-  },
-  // Dermatologists
-  {
-    id: 9,
-    name: "Dr. Rashida Begum",
-    specialty: "Dermatologist",
-    hospital: "Labaid Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 267,
-    verified: true,
-    experience: "18 years",
-    fee: "৳1,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 10,
-    name: "Dr. Md. Shahidullah Sikder",
-    specialty: "Dermatologist",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 189,
-    verified: true,
-    experience: "15 years",
-    fee: "৳1,800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-  },
-  // Gynecologists
-  {
-    id: 11,
-    name: "Dr. Ferdousi Begum",
-    specialty: "Gynecologist",
-    hospital: "Dhaka Medical College",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 356,
-    verified: true,
-    experience: "22 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 12,
-    name: "Dr. Mariha Alam Chowdhury",
-    specialty: "Gynecologist",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 234,
-    verified: true,
-    experience: "12 years",
-    fee: "৳1,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 13,
-    name: "Dr. Nahid Yasmin",
-    specialty: "Gynecologist",
-    hospital: "United Hospital",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 178,
-    verified: true,
-    experience: "16 years",
-    fee: "৳1,800",
-    available: false,
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-  },
-  // Orthopedic
-  {
-    id: 14,
-    name: "Dr. Rezaul Karim",
-    specialty: "Orthopedic",
-    hospital: "National Institute of Traumatology",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 289,
-    verified: true,
-    experience: "20 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 15,
-    name: "Dr. Khandaker Abu Taleb",
-    specialty: "Orthopedic",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 198,
-    verified: true,
-    experience: "17 years",
-    fee: "৳2,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 16,
-    name: "Dr. Md. Shafiqul Islam",
-    specialty: "Orthopedic",
-    hospital: "Ibn Sina Hospital",
-    area: "Sylhet",
-    rating: 4.6,
-    reviews: 134,
-    verified: true,
-    experience: "14 years",
-    fee: "৳1,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-  },
-  // ENT Specialists
-  {
-    id: 17,
-    name: "Dr. Kamrul Hassan Tarafder",
-    specialty: "ENT Specialist",
-    hospital: "Bangabandhu Sheikh Mujib Medical University",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 267,
-    verified: true,
-    experience: "23 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 18,
-    name: "Dr. Belayat Hossain Siddique",
-    specialty: "ENT Specialist",
-    hospital: "Square Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 189,
-    verified: true,
-    experience: "18 years",
-    fee: "৳1,800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  // Psychiatrists
-  {
-    id: 19,
-    name: "Dr. Mohammad Waziul Alam Chowdhury",
-    specialty: "Psychiatrist",
-    hospital: "National Institute of Mental Health",
-    area: "Dhaka",
-    rating: 4.9,
-    reviews: 312,
-    verified: true,
-    experience: "20 years",
-    fee: "৳2,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 20,
-    name: "Dr. Helal Uddin Ahmed",
-    specialty: "Psychiatrist",
-    hospital: "United Hospital",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 234,
-    verified: true,
-    experience: "16 years",
-    fee: "৳1,800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  // General Physicians
-  {
-    id: 21,
-    name: "Dr. Shoaib Ahmad",
-    specialty: "General Physician",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.8,
-    reviews: 456,
-    verified: true,
-    experience: "12 years",
-    fee: "৳800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 22,
-    name: "Dr. Kabir Ahmed Khan",
-    specialty: "General Physician",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 389,
-    verified: true,
-    experience: "18 years",
-    fee: "৳1,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 23,
-    name: "Dr. Sajjadur Rahman",
-    specialty: "General Physician",
-    hospital: "Praava Health",
-    area: "Dhaka",
-    rating: 4.6,
-    reviews: 278,
-    verified: true,
-    experience: "15 years",
-    fee: "৳800",
-    available: false,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 24,
-    name: "Dr. Tahmina Akter",
-    specialty: "General Physician",
-    hospital: "Ibn Sina Diagnostic",
-    area: "Chittagong",
-    rating: 4.7,
-    reviews: 198,
-    verified: true,
-    experience: "10 years",
-    fee: "৳600",
-    available: true,
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 25,
-    name: "Dr. Abdul Matin",
-    specialty: "General Physician",
-    hospital: "Popular Diagnostic",
-    area: "Sylhet",
-    rating: 4.5,
-    reviews: 167,
-    verified: true,
-    experience: "20 years",
-    fee: "৳700",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  // Additional specialists from different areas
-  {
-    id: 26,
-    name: "Dr. Nazrul Islam",
-    specialty: "Cardiologist",
-    hospital: "Chittagong Medical College",
-    area: "Chittagong",
-    rating: 4.8,
-    reviews: 234,
-    verified: true,
-    experience: "19 years",
-    fee: "৳1,800",
-    available: true,
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 27,
-    name: "Dr. Fatima Nasreen",
-    specialty: "Dermatologist",
-    hospital: "Evercare Hospital",
-    area: "Dhaka",
-    rating: 4.7,
-    reviews: 145,
-    verified: true,
-    experience: "11 years",
-    fee: "৳1,200",
-    available: true,
-    image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 28,
-    name: "Dr. Md. Harun-Or-Rashid",
-    specialty: "Neurologist",
-    hospital: "Rajshahi Medical College",
-    area: "Rajshahi",
-    rating: 4.6,
-    reviews: 123,
-    verified: true,
-    experience: "14 years",
-    fee: "৳1,500",
-    available: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 29,
-    name: "Dr. Shamima Akhter",
-    specialty: "Gynecologist",
-    hospital: "Khulna Medical College",
-    area: "Khulna",
-    rating: 4.7,
-    reviews: 189,
-    verified: true,
-    experience: "16 years",
-    fee: "৳1,200",
-    available: true,
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 30,
-    name: "Dr. Mohammad Iqbal",
-    specialty: "Orthopedic",
-    hospital: "Rangpur Medical College",
-    area: "Rangpur",
-    rating: 4.5,
-    reviews: 98,
-    verified: true,
-    experience: "13 years",
-    fee: "৳1,000",
-    available: true,
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face",
-  },
-  // More Cardiologists
-  { id: 31, name: "Dr. A.K.M. Mohibullah", specialty: "Cardiologist", hospital: "National Heart Foundation", area: "Dhaka", rating: 4.9, reviews: 456, verified: true, experience: "28 years", fee: "৳3,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 32, name: "Dr. Harisul Hoque", specialty: "Cardiologist", hospital: "NICVD", area: "Dhaka", rating: 4.9, reviews: 389, verified: true, experience: "25 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 33, name: "Dr. Md. Abdul Kader", specialty: "Cardiologist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.8, reviews: 267, verified: true, experience: "20 years", fee: "৳2,200", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 34, name: "Dr. Syed Ali Ahsan", specialty: "Cardiologist", hospital: "BSMMU", area: "Dhaka", rating: 4.8, reviews: 312, verified: true, experience: "22 years", fee: "৳2,000", available: false, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 35, name: "Dr. Khurshed Ahmed", specialty: "Cardiologist", hospital: "Ibrahim Cardiac", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "18 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 36, name: "Dr. Afzalur Rahman", specialty: "Cardiologist", hospital: "Lab Aid Cardiac", area: "Dhaka", rating: 4.7, reviews: 178, verified: true, experience: "16 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 37, name: "Dr. Manzoor Mahmood", specialty: "Cardiologist", hospital: "Chittagong General Hospital", area: "Chittagong", rating: 4.6, reviews: 145, verified: true, experience: "15 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 38, name: "Dr. Shahabuddin Talukder", specialty: "Cardiologist", hospital: "Max Hospital", area: "Chittagong", rating: 4.6, reviews: 134, verified: true, experience: "14 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 39, name: "Dr. Nurul Amin", specialty: "Cardiologist", hospital: "Sylhet MAG Osmani Medical", area: "Sylhet", rating: 4.5, reviews: 112, verified: true, experience: "17 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 40, name: "Dr. Fazlur Rahman", specialty: "Cardiologist", hospital: "Rajshahi Heart Foundation", area: "Rajshahi", rating: 4.5, reviews: 98, verified: true, experience: "16 years", fee: "৳1,200", available: false, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  // More Neurologists
-  { id: 41, name: "Dr. Anisul Haque", specialty: "Neurologist", hospital: "BSMMU", area: "Dhaka", rating: 4.9, reviews: 378, verified: true, experience: "24 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 42, name: "Dr. Badrul Alam", specialty: "Neurologist", hospital: "NINSH", area: "Dhaka", rating: 4.8, reviews: 289, verified: true, experience: "20 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 43, name: "Dr. Rajib Nayan Chowdhury", specialty: "Neurologist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.8, reviews: 234, verified: true, experience: "18 years", fee: "৳2,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 44, name: "Dr. Shamsul Alam", specialty: "Neurologist", hospital: "United Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "16 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 45, name: "Dr. Maniruzzaman Bhuiyan", specialty: "Neurologist", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.7, reviews: 167, verified: true, experience: "15 years", fee: "৳1,500", available: false, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 46, name: "Dr. Kazi Jannat Ara", specialty: "Neurologist", hospital: "Popular Diagnostic", area: "Dhaka", rating: 4.6, reviews: 145, verified: true, experience: "14 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 47, name: "Dr. Tapan Kumar Nath", specialty: "Neurologist", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.6, reviews: 134, verified: true, experience: "18 years", fee: "৳1,400", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 48, name: "Dr. Moushumi Dey", specialty: "Neurologist", hospital: "Imperial Hospital", area: "Chittagong", rating: 4.5, reviews: 112, verified: true, experience: "12 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 49, name: "Dr. Md. Rafiqul Islam", specialty: "Neurologist", hospital: "Sylhet Osmani Medical", area: "Sylhet", rating: 4.5, reviews: 98, verified: true, experience: "15 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 50, name: "Dr. Ashraful Haque", specialty: "Neurologist", hospital: "Khulna Medical College", area: "Khulna", rating: 4.4, reviews: 87, verified: true, experience: "13 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  // More Pediatricians
-  { id: 51, name: "Dr. M.R. Khan", specialty: "Pediatrician", hospital: "Dhaka Shishu Hospital", area: "Dhaka", rating: 4.9, reviews: 534, verified: true, experience: "26 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 52, name: "Dr. Selina Akhter", specialty: "Pediatrician", hospital: "BSMMU", area: "Dhaka", rating: 4.9, reviews: 423, verified: true, experience: "22 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 53, name: "Dr. Md. Abid Hossain Molla", specialty: "Pediatrician", hospital: "Square Hospital", area: "Dhaka", rating: 4.8, reviews: 356, verified: true, experience: "18 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 54, name: "Dr. Shahana Akhter Rahman", specialty: "Pediatrician", hospital: "United Hospital", area: "Dhaka", rating: 4.8, reviews: 289, verified: true, experience: "16 years", fee: "৳1,500", available: false, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 55, name: "Dr. Mahbubul Hoque", specialty: "Pediatrician", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 234, verified: true, experience: "15 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 56, name: "Dr. Rubina Jesmin", specialty: "Pediatrician", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "14 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 57, name: "Dr. Nurun Nahar Begum", specialty: "Pediatrician", hospital: "Ibn Sina Hospital", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "12 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 58, name: "Dr. Kamal Uddin", specialty: "Pediatrician", hospital: "Chittagong Shishu Hospital", area: "Chittagong", rating: 4.6, reviews: 145, verified: true, experience: "16 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 59, name: "Dr. Asma Begum", specialty: "Pediatrician", hospital: "Max Hospital", area: "Chittagong", rating: 4.5, reviews: 123, verified: true, experience: "13 years", fee: "৳800", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 60, name: "Dr. Jahanara Begum", specialty: "Pediatrician", hospital: "Sylhet Women & Children", area: "Sylhet", rating: 4.5, reviews: 112, verified: true, experience: "14 years", fee: "৳800", available: false, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  // More Dermatologists
-  { id: 61, name: "Dr. A.Z.M. Maidul Islam", specialty: "Dermatologist", hospital: "Dhaka Medical College", area: "Dhaka", rating: 4.9, reviews: 356, verified: true, experience: "24 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 62, name: "Dr. Lubna Khondker", specialty: "Dermatologist", hospital: "BSMMU", area: "Dhaka", rating: 4.8, reviews: 289, verified: true, experience: "18 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 63, name: "Dr. Mohammad Ali", specialty: "Dermatologist", hospital: "United Hospital", area: "Dhaka", rating: 4.8, reviews: 234, verified: true, experience: "16 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 64, name: "Dr. Sharmin Sultana", specialty: "Dermatologist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "14 years", fee: "৳1,500", available: false, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 65, name: "Dr. Hasina Akhter", specialty: "Dermatologist", hospital: "Popular Diagnostic", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "12 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 66, name: "Dr. Nazmul Haque", specialty: "Dermatologist", hospital: "Ibn Sina Diagnostic", area: "Dhaka", rating: 4.6, reviews: 145, verified: true, experience: "13 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 67, name: "Dr. Fatema Tuz Johora", specialty: "Dermatologist", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.5, reviews: 123, verified: true, experience: "15 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 68, name: "Dr. Syed Shafi Ahmed", specialty: "Dermatologist", hospital: "Imperial Hospital", area: "Chittagong", rating: 4.5, reviews: 112, verified: true, experience: "14 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 69, name: "Dr. Mst. Rokeya Begum", specialty: "Dermatologist", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.4, reviews: 98, verified: true, experience: "16 years", fee: "৳800", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 70, name: "Dr. Md. Shamsuzzaman", specialty: "Dermatologist", hospital: "Khulna Medical College", area: "Khulna", rating: 4.4, reviews: 87, verified: true, experience: "13 years", fee: "৳800", available: false, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  // More Gynecologists
-  { id: 71, name: "Dr. Rowshan Ara Begum", specialty: "Gynecologist", hospital: "BSMMU", area: "Dhaka", rating: 4.9, reviews: 489, verified: true, experience: "26 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 72, name: "Dr. Firoza Begum", specialty: "Gynecologist", hospital: "Dhaka Medical College", area: "Dhaka", rating: 4.9, reviews: 412, verified: true, experience: "24 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 73, name: "Dr. Sayeba Akhter", specialty: "Gynecologist", hospital: "Square Hospital", area: "Dhaka", rating: 4.8, reviews: 356, verified: true, experience: "22 years", fee: "৳2,200", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 74, name: "Dr. Kohinoor Begum", specialty: "Gynecologist", hospital: "United Hospital", area: "Dhaka", rating: 4.8, reviews: 289, verified: true, experience: "20 years", fee: "৳2,000", available: false, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 75, name: "Dr. Jesmin Akter", specialty: "Gynecologist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 234, verified: true, experience: "16 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 76, name: "Dr. Nasreen Sultana", specialty: "Gynecologist", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "15 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 77, name: "Dr. Hosne Ara Begum", specialty: "Gynecologist", hospital: "Ibn Sina Hospital", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "14 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 78, name: "Dr. Parveen Akhter", specialty: "Gynecologist", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.6, reviews: 156, verified: true, experience: "18 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 79, name: "Dr. Momena Begum", specialty: "Gynecologist", hospital: "Sylhet Women & Children", area: "Sylhet", rating: 4.5, reviews: 134, verified: true, experience: "16 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 80, name: "Dr. Razia Sultana", specialty: "Gynecologist", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.5, reviews: 123, verified: true, experience: "17 years", fee: "৳1,000", available: false, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  // More Orthopedics
-  { id: 81, name: "Dr. A.K.M. Zahiruddin", specialty: "Orthopedic", hospital: "NITOR", area: "Dhaka", rating: 4.9, reviews: 378, verified: true, experience: "25 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 82, name: "Dr. Md. Shah Alam", specialty: "Orthopedic", hospital: "BSMMU", area: "Dhaka", rating: 4.8, reviews: 312, verified: true, experience: "22 years", fee: "৳2,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 83, name: "Dr. Syed Mozammel Hossain", specialty: "Orthopedic", hospital: "United Hospital", area: "Dhaka", rating: 4.8, reviews: 267, verified: true, experience: "20 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 84, name: "Dr. Kamrul Islam", specialty: "Orthopedic", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 234, verified: true, experience: "18 years", fee: "৳2,000", available: false, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 85, name: "Dr. Mahmudul Hasan", specialty: "Orthopedic", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "16 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 86, name: "Dr. Sohel Ahmed", specialty: "Orthopedic", hospital: "Ibn Sina Hospital", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "14 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 87, name: "Dr. Jahangir Alam", specialty: "Orthopedic", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.6, reviews: 145, verified: true, experience: "17 years", fee: "৳1,400", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 88, name: "Dr. Faruk Ahmed", specialty: "Orthopedic", hospital: "Max Hospital", area: "Chittagong", rating: 4.5, reviews: 123, verified: true, experience: "15 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 89, name: "Dr. Abdul Hai", specialty: "Orthopedic", hospital: "Sylhet MAG Osmani", area: "Sylhet", rating: 4.5, reviews: 112, verified: true, experience: "16 years", fee: "৳1,200", available: false, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 90, name: "Dr. Md. Aminul Islam", specialty: "Orthopedic", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.4, reviews: 98, verified: true, experience: "14 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  // More ENT Specialists
-  { id: 91, name: "Dr. Pran Gopal Datta", specialty: "ENT Specialist", hospital: "BSMMU", area: "Dhaka", rating: 4.9, reviews: 345, verified: true, experience: "28 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 92, name: "Dr. Md. Abu Hanif", specialty: "ENT Specialist", hospital: "Dhaka Medical College", area: "Dhaka", rating: 4.8, reviews: 289, verified: true, experience: "22 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 93, name: "Dr. Harunur Rashid", specialty: "ENT Specialist", hospital: "United Hospital", area: "Dhaka", rating: 4.8, reviews: 234, verified: true, experience: "18 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 94, name: "Dr. Zahid Al Masum", specialty: "ENT Specialist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "16 years", fee: "৳1,800", available: false, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 95, name: "Dr. Shahnaz Begum", specialty: "ENT Specialist", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "14 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 96, name: "Dr. Abdul Latif", specialty: "ENT Specialist", hospital: "Ibn Sina Hospital", area: "Dhaka", rating: 4.6, reviews: 145, verified: true, experience: "15 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 97, name: "Dr. Mostafa Kamal", specialty: "ENT Specialist", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.5, reviews: 134, verified: true, experience: "16 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 98, name: "Dr. Tanjina Hossain", specialty: "ENT Specialist", hospital: "Imperial Hospital", area: "Chittagong", rating: 4.5, reviews: 112, verified: true, experience: "13 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 99, name: "Dr. Rezaul Karim", specialty: "ENT Specialist", hospital: "Sylhet MAG Osmani", area: "Sylhet", rating: 4.4, reviews: 98, verified: true, experience: "14 years", fee: "৳1,000", available: false, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 100, name: "Dr. Shamim Ahmed", specialty: "ENT Specialist", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.4, reviews: 87, verified: true, experience: "15 years", fee: "৳900", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  // More Psychiatrists
-  { id: 101, name: "Dr. Md. Faruq Alam", specialty: "Psychiatrist", hospital: "NIMH", area: "Dhaka", rating: 4.9, reviews: 378, verified: true, experience: "24 years", fee: "৳2,500", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 102, name: "Dr. Jhunu Shamsun Nahar", specialty: "Psychiatrist", hospital: "BSMMU", area: "Dhaka", rating: 4.9, reviews: 312, verified: true, experience: "22 years", fee: "৳2,000", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 103, name: "Dr. Md. Golam Rabbani", specialty: "Psychiatrist", hospital: "Dhaka Medical College", area: "Dhaka", rating: 4.8, reviews: 267, verified: true, experience: "20 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 104, name: "Dr. Sultana Algin", specialty: "Psychiatrist", hospital: "Square Hospital", area: "Dhaka", rating: 4.8, reviews: 234, verified: true, experience: "18 years", fee: "৳2,000", available: false, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 105, name: "Dr. Mekhala Sarkar", specialty: "Psychiatrist", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.7, reviews: 198, verified: true, experience: "15 years", fee: "৳1,800", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 106, name: "Dr. Nahid Mahjabin Morshed", specialty: "Psychiatrist", hospital: "Lab Aid Hospital", area: "Dhaka", rating: 4.6, reviews: 167, verified: true, experience: "13 years", fee: "৳1,500", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 107, name: "Dr. Ahsan Uddin Ahmed", specialty: "Psychiatrist", hospital: "Ibn Sina Hospital", area: "Dhaka", rating: 4.6, reviews: 145, verified: true, experience: "14 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 108, name: "Dr. Syed Mahfuza Mubarak", specialty: "Psychiatrist", hospital: "Chittagong Medical College", area: "Chittagong", rating: 4.5, reviews: 123, verified: true, experience: "16 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 109, name: "Dr. Rashida Begum", specialty: "Psychiatrist", hospital: "Sylhet MAG Osmani", area: "Sylhet", rating: 4.5, reviews: 98, verified: true, experience: "15 years", fee: "৳1,000", available: false, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 110, name: "Dr. Mohammad Kamruzzaman", specialty: "Psychiatrist", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.4, reviews: 87, verified: true, experience: "12 years", fee: "৳900", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  // More General Physicians
-  { id: 111, name: "Dr. Md. Billal Alam", specialty: "General Physician", hospital: "Praava Health", area: "Dhaka", rating: 4.8, reviews: 534, verified: true, experience: "18 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 112, name: "Dr. Fatema Begum", specialty: "General Physician", hospital: "DocTime", area: "Dhaka", rating: 4.8, reviews: 467, verified: true, experience: "16 years", fee: "৳800", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 113, name: "Dr. Rezaul Karim", specialty: "General Physician", hospital: "United Hospital", area: "Dhaka", rating: 4.7, reviews: 389, verified: true, experience: "14 years", fee: "৳1,200", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 114, name: "Dr. Nazma Akter", specialty: "General Physician", hospital: "Square Hospital", area: "Dhaka", rating: 4.7, reviews: 312, verified: true, experience: "15 years", fee: "৳1,000", available: false, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 115, name: "Dr. Shafiqul Islam", specialty: "General Physician", hospital: "Evercare Hospital", area: "Dhaka", rating: 4.6, reviews: 267, verified: true, experience: "12 years", fee: "৳1,000", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 116, name: "Dr. Hasina Begum", specialty: "General Physician", hospital: "Lab Aid Diagnostic", area: "Dhaka", rating: 4.6, reviews: 234, verified: true, experience: "13 years", fee: "৳700", available: true, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face" },
-  { id: 117, name: "Dr. Ataur Rahman", specialty: "General Physician", hospital: "Ibn Sina Diagnostic", area: "Dhaka", rating: 4.5, reviews: 198, verified: true, experience: "11 years", fee: "৳600", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 118, name: "Dr. Monira Begum", specialty: "General Physician", hospital: "Popular Diagnostic", area: "Dhaka", rating: 4.5, reviews: 178, verified: true, experience: "14 years", fee: "৳700", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 119, name: "Dr. Abdul Jalil", specialty: "General Physician", hospital: "Chittagong General Hospital", area: "Chittagong", rating: 4.5, reviews: 156, verified: true, experience: "16 years", fee: "৳600", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 120, name: "Dr. Salma Akter", specialty: "General Physician", hospital: "Max Hospital", area: "Chittagong", rating: 4.4, reviews: 134, verified: true, experience: "12 years", fee: "৳500", available: false, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 121, name: "Dr. Mofizur Rahman", specialty: "General Physician", hospital: "Imperial Hospital", area: "Chittagong", rating: 4.4, reviews: 123, verified: true, experience: "13 years", fee: "৳600", available: true, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop&crop=face" },
-  { id: 122, name: "Dr. Nasima Begum", specialty: "General Physician", hospital: "Sylhet MAG Osmani", area: "Sylhet", rating: 4.4, reviews: 112, verified: true, experience: "15 years", fee: "৳500", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 123, name: "Dr. Golam Mostafa", specialty: "General Physician", hospital: "Mount Adora Hospital", area: "Sylhet", rating: 4.3, reviews: 98, verified: true, experience: "11 years", fee: "৳500", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 124, name: "Dr. Shahnaz Parvin", specialty: "General Physician", hospital: "Rajshahi Medical College", area: "Rajshahi", rating: 4.3, reviews: 89, verified: true, experience: "14 years", fee: "৳500", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 125, name: "Dr. Md. Hafizur Rahman", specialty: "General Physician", hospital: "Khulna Medical College", area: "Khulna", rating: 4.3, reviews: 78, verified: true, experience: "16 years", fee: "৳500", available: false, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 126, name: "Dr. Shamsun Nahar", specialty: "General Physician", hospital: "Rangpur Medical College", area: "Rangpur", rating: 4.2, reviews: 67, verified: true, experience: "12 years", fee: "৳400", available: true, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-  { id: 127, name: "Dr. Belal Hossain", specialty: "General Physician", hospital: "Barisal Sher-E-Bangla", area: "Barisal", rating: 4.2, reviews: 56, verified: true, experience: "13 years", fee: "৳400", available: true, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face" },
-  { id: 128, name: "Dr. Farida Yasmin", specialty: "General Physician", hospital: "Mymensingh Medical", area: "Mymensingh", rating: 4.2, reviews: 45, verified: true, experience: "10 years", fee: "৳400", available: true, image: "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop&crop=face" },
-  { id: 129, name: "Dr. Nurul Islam", specialty: "General Physician", hospital: "Comilla Medical College", area: "Chittagong", rating: 4.1, reviews: 34, verified: true, experience: "11 years", fee: "৳400", available: true, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop&crop=face" },
-  { id: 130, name: "Dr. Mahfuza Khatun", specialty: "General Physician", hospital: "Bogra Medical Center", area: "Rajshahi", rating: 4.1, reviews: 28, verified: true, experience: "9 years", fee: "৳400", available: false, image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face" },
-];
-
 export default function Doctors() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("All Specialties");
   const [selectedArea, setSelectedArea] = useState("All Areas");
   const [showFilters, setShowFilters] = useState(false);
-  const [dbDoctors, setDbDoctors] = useState<Doctor[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [chambers, setChambers] = useState<Record<string, Chamber[]>>({});
   const [loading, setLoading] = useState(true);
   
   // AI Doctor Finder state
@@ -611,42 +82,71 @@ export default function Doctors() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
 
-  // Fetch approved doctors from database
+  // Fetch approved and active doctors from database
   useEffect(() => {
     const fetchDoctors = async () => {
       const { data, error } = await supabase
         .from("doctors")
         .select("*")
         .eq("verification_status", "approved")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("featured_rank", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
       
       if (!error && data) {
-        setDbDoctors(data);
+        setDoctors(data);
+        // Fetch chambers for all doctors
+        if (data.length > 0) {
+          fetchChambers(data.map(d => d.id));
+        }
       }
       setLoading(false);
     };
     fetchDoctors();
   }, []);
 
-  // Convert database doctors to display format
-  const databaseDoctorsFormatted = dbDoctors.map((doc) => ({
-    id: doc.id, // Use actual UUID for proper linking to DoctorProfile
-    name: doc.full_name,
-    specialty: doc.specialization,
-    hospital: doc.hospital_affiliation || "Independent Practice",
-    area: "Dhaka", // Default area since not stored in DB
-    rating: 4.5 + (Math.random() * 0.5), // Placeholder rating
-    reviews: Math.floor(Math.random() * 200) + 50,
-    verified: true,
-    experience: doc.experience_years ? `${doc.experience_years} years` : "N/A",
-    fee: "৳1,000",
-    available: true,
-    image: `https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face`,
-    isFromDatabase: true, // Flag to identify database doctors
-  }));
+  const fetchChambers = async (doctorIds: string[]) => {
+    const { data, error } = await supabase
+      .from("doctor_chambers")
+      .select("*")
+      .in("doctor_id", doctorIds);
 
-  // Combine database doctors (shown first) with mock doctors
-  const allDoctors = [...databaseDoctorsFormatted, ...doctors];
+    if (!error && data) {
+      const chambersByDoctor: Record<string, Chamber[]> = {};
+      data.forEach((chamber) => {
+        if (!chambersByDoctor[chamber.doctor_id]) {
+          chambersByDoctor[chamber.doctor_id] = [];
+        }
+        chambersByDoctor[chamber.doctor_id].push(chamber);
+      });
+      setChambers(chambersByDoctor);
+    }
+  };
+
+  // Get first chamber's fee for display
+  const getDisplayFee = (doctorId: string) => {
+    const doctorChambers = chambers[doctorId];
+    if (doctorChambers && doctorChambers.length > 0) {
+      const fee = doctorChambers[0].appointment_fee;
+      return fee ? `৳${fee}` : "Contact for fee";
+    }
+    return "Contact for fee";
+  };
+
+  // Get area from first chamber
+  const getDisplayArea = (doctorId: string) => {
+    const doctorChambers = chambers[doctorId];
+    if (doctorChambers && doctorChambers.length > 0) {
+      const address = doctorChambers[0].address.toLowerCase();
+      for (const area of areas.slice(1)) {
+        if (address.includes(area.toLowerCase())) {
+          return area;
+        }
+      }
+    }
+    return "Dhaka"; // Default
+  };
 
   const analyzeSymptoms = () => {
     if (symptomText.trim().length === 0) return;
@@ -678,12 +178,13 @@ export default function Doctors() {
     }, 1500);
   };
 
-  const filteredDoctors = allDoctors.filter((doctor) => {
-    const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doctor.hospital.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSpecialty = selectedSpecialty === "All Specialties" || doctor.specialty === selectedSpecialty;
-    const matchesArea = selectedArea === "All Areas" || doctor.area === selectedArea;
+  const filteredDoctors = doctors.filter((doctor) => {
+    const matchesSearch = doctor.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doctor.specialization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doctor.hospital_affiliation || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSpecialty = selectedSpecialty === "All Specialties" || doctor.specialization === selectedSpecialty;
+    const doctorArea = getDisplayArea(doctor.id);
+    const matchesArea = selectedArea === "All Areas" || doctorArea === selectedArea;
     return matchesSearch && matchesSpecialty && matchesArea;
   });
 
@@ -701,7 +202,7 @@ export default function Doctors() {
               Find Your Doctor
             </h1>
             <p className="text-primary-foreground/80 max-w-2xl mx-auto">
-              Search from over 10,000+ verified doctors across Bangladesh
+              Search from verified doctors across Bangladesh
             </p>
           </motion.div>
 
@@ -931,85 +432,88 @@ export default function Doctors() {
                 </div>
               </div>
 
+              {/* Loading State */}
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              )}
+
               {/* Doctor Cards */}
-              <div className="space-y-4">
-                {filteredDoctors.map((doctor, index) => (
-                  <motion.div
-                    key={doctor.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Link to={`/doctors/${doctor.id}`} className="block healthcare-card">
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <img
-                          src={doctor.image}
-                          alt={doctor.name}
-                          className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover mx-auto sm:mx-0"
-                        />
-                        <div className="flex-1 text-center sm:text-left">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <h3 className="font-display text-lg font-semibold text-foreground">
-                              {doctor.name}
-                            </h3>
-                            {doctor.verified && (
+              {!loading && (
+                <div className="space-y-4">
+                  {filteredDoctors.map((doctor, index) => (
+                    <motion.div
+                      key={doctor.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Link to={`/doctors/${doctor.id}`} className="block healthcare-card hover:shadow-healthcare-lg transition-shadow">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <img
+                            src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face"
+                            alt={doctor.full_name}
+                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover mx-auto sm:mx-0"
+                          />
+                          <div className="flex-1 text-center sm:text-left">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <h3 className="font-display text-lg font-semibold text-foreground">
+                                {doctor.full_name}
+                              </h3>
                               <div className="flex items-center gap-1 justify-center sm:justify-start">
                                 <CheckCircle2 className="w-4 h-4 text-healthcare-green" />
                                 <span className="text-xs text-healthcare-green font-medium">Verified</span>
                               </div>
-                            )}
-                          </div>
-                          <p className="text-primary font-medium mb-1">{doctor.specialty}</p>
-                          <div className="flex items-center gap-2 justify-center sm:justify-start text-muted-foreground text-sm mb-2">
-                            <Building2 className="w-4 h-4" />
-                            <span>{doctor.hospital}</span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-4 justify-center sm:justify-start text-sm">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-accent fill-accent" />
-                              <span className="font-semibold text-foreground">{doctor.rating}</span>
-                              <span className="text-muted-foreground">({doctor.reviews})</span>
+                              {doctor.is_featured && (
+                                <div className="flex items-center gap-1 justify-center sm:justify-start">
+                                  <Star className="w-4 h-4 text-accent fill-accent" />
+                                  <span className="text-xs text-accent font-medium">Featured</span>
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="w-4 h-4" />
-                              <span>{doctor.experience}</span>
+                            <p className="text-primary font-medium mb-1">{doctor.specialization}</p>
+                            <div className="flex items-center gap-2 justify-center sm:justify-start text-muted-foreground text-sm mb-2">
+                              <Building2 className="w-4 h-4" />
+                              <span>{doctor.hospital_affiliation || "Independent Practice"}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <MapPin className="w-4 h-4" />
-                              <span>{doctor.area}</span>
+                            <div className="flex flex-wrap items-center gap-4 justify-center sm:justify-start text-sm">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <span>{doctor.experience_years ? `${doctor.experience_years} years` : "N/A"}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <MapPin className="w-4 h-4" />
+                                <span>{getDisplayArea(doctor.id)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex flex-col items-center sm:items-end justify-between gap-4">
-                          <div className="text-center sm:text-right">
-                            <p className="text-2xl font-bold text-foreground">{doctor.fee}</p>
-                            <p className="text-xs text-muted-foreground">Consultation Fee</p>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            {doctor.available ? (
+                          <div className="flex flex-col items-center sm:items-end justify-between gap-4">
+                            <div className="text-center sm:text-right">
+                              <p className="text-2xl font-bold text-foreground">{getDisplayFee(doctor.id)}</p>
+                              <p className="text-xs text-muted-foreground">Consultation Fee</p>
+                            </div>
+                            <div className="flex flex-col gap-2">
                               <span className="healthcare-badge-success text-xs">
                                 <span className="w-2 h-2 rounded-full bg-healthcare-green mr-1" />
-                                Available Today
+                                Available
                               </span>
-                            ) : (
-                              <span className="healthcare-badge text-xs">
-                                Next Available: Tomorrow
-                              </span>
-                            )}
-                            <Button variant="healthcare" size="sm">
-                              Book Appointment
-                            </Button>
+                              <Button variant="healthcare" size="sm">
+                                Book Appointment
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
 
-              {filteredDoctors.length === 0 && (
+              {!loading && filteredDoctors.length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">No doctors found matching your criteria.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Try adjusting your filters or search query.</p>
                 </div>
               )}
             </div>
