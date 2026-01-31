@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   MessageCircle, Send, Image, X, MoreHorizontal,
-  ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2
+  ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2, Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import AdminPostControls from "@/components/admin/AdminPostControls";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,6 +83,7 @@ interface Post {
   comments: Comment[];
   shares: number;
   feeling?: string;
+  status?: string;
   originalPost?: {
     id: string;
     author: string;
@@ -160,6 +162,10 @@ export default function Articles() {
     commentId: string;
   } | null>(null);
 
+  // Admin mode
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+
   const isAuthenticated = !!session;
 
   // Fetch session and user profile
@@ -169,8 +175,10 @@ export default function Articles() {
         setSession(session);
         if (session?.user) {
           setTimeout(() => fetchUserProfile(session.user.id), 0);
+          setTimeout(() => checkAdminStatus(session.user.id), 0);
         } else {
           setUserProfile(null);
+          setIsAdmin(false);
         }
         setLoading(false);
       }
@@ -180,12 +188,24 @@ export default function Articles() {
       setSession(session);
       if (session?.user) {
         await fetchUserProfile(session.user.id);
+        await checkAdminStatus(session.user.id);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .single();
+
+    setIsAdmin(!!data);
+  };
 
   // Fetch posts from database
   useEffect(() => {
@@ -333,6 +353,7 @@ export default function Articles() {
             comments,
             feeling,
             originalPost,
+            status: post.status || "approved",
             isDoctor, // Add flag for sorting
           };
         })
@@ -368,7 +389,11 @@ export default function Articles() {
   };
 
   const filteredPosts = posts.filter((post) => {
-    return selectedCategory === "All" || post.category === selectedCategory;
+    const categoryMatch = selectedCategory === "All" || post.category === selectedCategory;
+    // In admin mode, show all posts including hidden/rejected
+    // Otherwise, only show approved posts
+    if (!adminMode && post.status !== "approved") return false;
+    return categoryMatch;
   });
 
   const handleCreatePost = async () => {
@@ -924,6 +949,24 @@ export default function Articles() {
               Share health tips, ask questions, and connect with the community
             </p>
           </motion.div>
+
+          {/* Admin Mode Toggle */}
+          {isAdmin && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-center mt-4"
+            >
+              <Button
+                variant={adminMode ? "accent" : "outline"}
+                onClick={() => setAdminMode(!adminMode)}
+                className="gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                {adminMode ? "Exit Admin Mode" : "Admin Mode"}
+              </Button>
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -1110,6 +1153,13 @@ export default function Articles() {
                 transition={{ delay: index * 0.05 }}
                 className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
               >
+                {/* Admin Controls */}
+                {adminMode && (
+                  <div className="p-4 pb-0">
+                    <AdminPostControls post={post} onUpdate={fetchPosts} />
+                  </div>
+                )}
+
                 {/* Post Header */}
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
