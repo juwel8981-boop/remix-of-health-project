@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { 
-  Star, CheckCircle2, MapPin, Clock, Phone, Calendar,
-  Building2, GraduationCap, Award, MessageCircle, Share2, Heart,
-  ChevronRight, Users, Loader2
+  CheckCircle2, MapPin, Clock, Phone, Calendar,
+  Building2, Award, ChevronRight, Users, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DoctorProfileActions } from "@/components/doctor/DoctorProfileActions";
+import { DoctorRatingDisplay } from "@/components/doctor/DoctorRatingDisplay";
+import { DoctorReviewSection } from "@/components/doctor/DoctorReviewSection";
 
 interface Doctor {
   id: string;
@@ -172,11 +174,7 @@ export default function DoctorProfile() {
               )}
               
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-primary-foreground/80">
-                <div className="flex items-center gap-1">
-                  <Star className="w-5 h-5 text-accent fill-accent" />
-                  <span className="font-semibold text-primary-foreground">4.8</span>
-                  <span>(Reviews coming soon)</span>
-                </div>
+                <DoctorRatingDisplay doctorId={doctor.id} />
                 {doctor.experience_years && (
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
@@ -189,13 +187,8 @@ export default function DoctorProfile() {
                 </div>
               </div>
             </div>
-            <div className="md:ml-auto flex gap-3">
-              <Button variant="outline" size="icon" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
-                <Heart className="w-5 h-5" />
-              </Button>
-              <Button variant="outline" size="icon" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
-                <Share2 className="w-5 h-5" />
-              </Button>
+            <div className="md:ml-auto">
+              <DoctorProfileActions doctorId={doctor.id} doctorName={doctor.full_name} />
             </div>
           </motion.div>
         </div>
@@ -311,29 +304,14 @@ export default function DoctorProfile() {
                     </div>
                   )}
                   <div className="flex items-center gap-3">
-                    <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                    <Phone className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">{doctor.email}</span>
                   </div>
                 </div>
               </motion.div>
 
-              {/* Reviews Placeholder */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="healthcare-card"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-lg font-semibold text-foreground">
-                    <MessageCircle className="w-5 h-5 inline mr-2 text-primary" />
-                    Patient Reviews
-                  </h2>
-                </div>
-                <p className="text-muted-foreground text-center py-8">
-                  Patient reviews feature coming soon. Be the first to review this doctor after your appointment!
-                </p>
-              </motion.div>
+              {/* Reviews Section */}
+              <DoctorReviewSection doctorId={doctor.id} doctorName={doctor.full_name} />
             </div>
 
             {/* Sidebar - Booking */}
