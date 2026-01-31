@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, Send, Loader2 } from "lucide-react";
+import { Search, MapPin, Filter, Star, CheckCircle2, Clock, Building2, ChevronDown, Brain, Sparkles, Send, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import AdminDoctorControls from "@/components/admin/AdminDoctorControls";
 
 interface Doctor {
   id: string;
   full_name: string;
+  email: string;
+  registration_number: string;
   specialization: string;
   hospital_affiliation: string | null;
   experience_years: number | null;
@@ -25,8 +28,11 @@ interface Chamber {
   doctor_id: string;
   name: string;
   address: string;
-  appointment_fee: string | null;
+  phone: string | null;
   days: string[] | null;
+  timing: string | null;
+  appointment_fee: string | null;
+  serial_available: boolean | null;
 }
 
 const specialties = [
@@ -75,6 +81,8 @@ export default function Doctors() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [chambers, setChambers] = useState<Record<string, Chamber[]>>({});
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
   
   // AI Doctor Finder state
   const [showAIFinder, setShowAIFinder] = useState(false);
@@ -82,29 +90,52 @@ export default function Doctors() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
 
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .single();
+
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, []);
+
+  // Fetch doctors function (moved outside useEffect so it can be called from AdminDoctorControls)
+  const fetchDoctors = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("doctors")
+      .select("*")
+      .order("is_featured", { ascending: false })
+      .order("featured_rank", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    
+    if (!error && data) {
+      // In admin mode, show all doctors; otherwise only approved+active
+      const filteredData = adminMode 
+        ? data 
+        : data.filter(d => d.verification_status === "approved" && d.is_active);
+      setDoctors(filteredData);
+      // Fetch chambers for all doctors
+      if (data.length > 0) {
+        fetchChambers(data.map(d => d.id));
+      }
+    }
+    setLoading(false);
+  };
+
   // Fetch approved and active doctors from database
   useEffect(() => {
-    const fetchDoctors = async () => {
-      const { data, error } = await supabase
-        .from("doctors")
-        .select("*")
-        .eq("verification_status", "approved")
-        .eq("is_active", true)
-        .order("is_featured", { ascending: false })
-        .order("featured_rank", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      
-      if (!error && data) {
-        setDoctors(data);
-        // Fetch chambers for all doctors
-        if (data.length > 0) {
-          fetchChambers(data.map(d => d.id));
-        }
-      }
-      setLoading(false);
-    };
     fetchDoctors();
-  }, []);
+  }, [adminMode]);
 
   const fetchChambers = async (doctorIds: string[]) => {
     const { data, error } = await supabase
@@ -251,12 +282,12 @@ export default function Doctors() {
             </div>
           </motion.div>
 
-          {/* AI Doctor Finder Button */}
+          {/* AI Doctor Finder Button + Admin Mode Toggle */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex justify-center mt-6"
+            className="flex justify-center gap-3 mt-6"
           >
             <Button 
               onClick={() => setShowAIFinder(true)}
@@ -266,6 +297,20 @@ export default function Doctors() {
               <span>AI Doctor Finder</span>
               <Sparkles className="w-4 h-4" />
             </Button>
+            
+            {isAdmin && (
+              <Button
+                onClick={() => setAdminMode(!adminMode)}
+                className={`gap-2 ${
+                  adminMode
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-primary-foreground/10 backdrop-blur-sm text-primary-foreground border border-primary-foreground/20 hover:bg-primary-foreground/20"
+                }`}
+              >
+                <Settings className="w-5 h-5" />
+                <span>{adminMode ? "Exit Admin Mode" : "Admin Mode"}</span>
+              </Button>
+            )}
           </motion.div>
         </div>
       </section>
@@ -449,6 +494,15 @@ export default function Doctors() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                     >
+                      {/* Admin Controls - Show when admin mode is enabled */}
+                      {adminMode && (
+                        <AdminDoctorControls
+                          doctor={doctor}
+                          chambers={chambers[doctor.id] || []}
+                          onUpdate={fetchDoctors}
+                        />
+                      )}
+                      
                       <Link to={`/doctors/${doctor.id}`} className="block healthcare-card hover:shadow-healthcare-lg transition-shadow">
                         <div className="flex flex-col sm:flex-row gap-4">
                           <img
@@ -470,6 +524,11 @@ export default function Doctors() {
                                   <Star className="w-4 h-4 text-accent fill-accent" />
                                   <span className="text-xs text-accent font-medium">Featured</span>
                                 </div>
+                              )}
+                              {adminMode && !doctor.is_active && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
+                                  Hidden
+                                </span>
                               )}
                             </div>
                             <p className="text-primary font-medium mb-1">{doctor.specialization}</p>
