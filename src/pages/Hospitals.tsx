@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List, Clock, Settings, Plus } from "lucide-react";
+import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FacilitiesMap } from "@/components/FacilitiesMap";
 import { supabase } from "@/integrations/supabase/client";
-import AdminFacilityControls from "@/components/admin/AdminFacilityControls";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
 
 interface Hospital {
   id: string;
@@ -46,7 +39,7 @@ interface Diagnostic {
   open_hours: string | null;
 }
 
-const locationsList = [
+const locations = [
   { value: "all", label: "All Locations" },
   { value: "Dhaka", label: "Dhaka" },
   { value: "Chittagong", label: "Chittagong" },
@@ -58,8 +51,6 @@ const locationsList = [
   { value: "Mymensingh", label: "Mymensingh" },
 ];
 
-const hospitalTypes = ["Government", "Private", "Semi-Government", "Specialized"];
-
 export default function Hospitals() {
   const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">("hospitals");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -70,68 +61,19 @@ export default function Hospitals() {
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Admin mode
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminMode, setAdminMode] = useState(false);
-  const [showAddHospitalDialog, setShowAddHospitalDialog] = useState(false);
-  const [showAddDiagnosticDialog, setShowAddDiagnosticDialog] = useState(false);
-  const [addingFacility, setAddingFacility] = useState(false);
-
-  const [newHospital, setNewHospital] = useState({
-    name: "",
-    type: "Private",
-    location: "Dhaka",
-    address: "",
-    phone: "",
-    beds: "",
-    specialties: "",
-    image_url: "",
-  });
-
-  const [newDiagnostic, setNewDiagnostic] = useState({
-    name: "",
-    location: "Dhaka",
-    address: "",
-    phone: "",
-    open_hours: "",
-    image_url: "",
-    services: [] as ServiceWithPrice[],
-  });
-  const [newService, setNewService] = useState({ name: "", price: "" });
-
   useEffect(() => {
-    checkAdminStatus();
     fetchData();
   }, []);
-
-  const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
-
-    setIsAdmin(!!data);
-  };
 
   const fetchData = async () => {
     setLoading(true);
     
-    // Fetch hospitals - include all if admin mode
-    const hospitalsQuery = supabase
+    // Fetch hospitals
+    const { data: hospitalsData, error: hospitalsError } = await supabase
       .from("hospitals")
       .select("*")
+      .eq("status", "approved")
       .order("rating", { ascending: false });
-
-    if (!adminMode) {
-      hospitalsQuery.eq("status", "approved");
-    }
-
-    const { data: hospitalsData, error: hospitalsError } = await hospitalsQuery;
 
     if (hospitalsError) {
       console.error("Error fetching hospitals:", hospitalsError);
@@ -140,16 +82,11 @@ export default function Hospitals() {
     }
 
     // Fetch diagnostics
-    const diagnosticsQuery = supabase
+    const { data: diagnosticsData, error: diagnosticsError } = await supabase
       .from("diagnostics")
       .select("*")
+      .eq("status", "approved")
       .order("rating", { ascending: false });
-
-    if (!adminMode) {
-      diagnosticsQuery.eq("status", "approved");
-    }
-
-    const { data: diagnosticsData, error: diagnosticsError } = await diagnosticsQuery;
 
     if (diagnosticsError) {
       console.error("Error fetching diagnostics:", diagnosticsError);
@@ -163,13 +100,6 @@ export default function Hospitals() {
 
     setLoading(false);
   };
-
-  // Refetch when admin mode changes
-  useEffect(() => {
-    if (isAdmin) {
-      fetchData();
-    }
-  }, [adminMode, isAdmin]);
 
   const filteredHospitals = hospitals.filter((h) => {
     const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -185,7 +115,7 @@ export default function Hospitals() {
     return matchesSearch && matchesLocation;
   });
 
-  const selectedLocationLabel = locationsList.find(l => l.value === selectedLocation)?.label || "All Locations";
+  const selectedLocationLabel = locations.find(l => l.value === selectedLocation)?.label || "All Locations";
 
   // Convert for map display
   const hospitalsForMap = filteredHospitals.map(h => ({
@@ -220,96 +150,6 @@ export default function Hospitals() {
     lng: 90.4125,
   }));
 
-  const handleAddHospital = async () => {
-    if (!newHospital.name || !newHospital.address) {
-      toast.error("Please fill required fields");
-      return;
-    }
-    setAddingFacility(true);
-
-    const { error } = await supabase.from("hospitals").insert({
-      name: newHospital.name,
-      type: newHospital.type,
-      location: newHospital.location,
-      address: newHospital.address,
-      phone: newHospital.phone || null,
-      beds: newHospital.beds ? parseInt(newHospital.beds) : null,
-      specialties: newHospital.specialties.split(",").map(s => s.trim()).filter(Boolean),
-      image_url: newHospital.image_url || null,
-      status: "approved",
-    });
-
-    setAddingFacility(false);
-
-    if (error) {
-      toast.error("Failed to add hospital");
-      console.error(error);
-    } else {
-      toast.success("Hospital added successfully");
-      setShowAddHospitalDialog(false);
-      setNewHospital({
-        name: "",
-        type: "Private",
-        location: "Dhaka",
-        address: "",
-        phone: "",
-        beds: "",
-        specialties: "",
-        image_url: "",
-      });
-      fetchData();
-    }
-  };
-
-  const handleAddDiagnostic = async () => {
-    if (!newDiagnostic.name || !newDiagnostic.address) {
-      toast.error("Please fill required fields");
-      return;
-    }
-    setAddingFacility(true);
-
-    const { error } = await supabase.from("diagnostics").insert({
-      name: newDiagnostic.name,
-      location: newDiagnostic.location,
-      address: newDiagnostic.address,
-      phone: newDiagnostic.phone || null,
-      open_hours: newDiagnostic.open_hours || null,
-      image_url: newDiagnostic.image_url || null,
-      services: JSON.parse(JSON.stringify(newDiagnostic.services)),
-      status: "approved",
-    });
-
-    setAddingFacility(false);
-
-    if (error) {
-      toast.error("Failed to add diagnostic center");
-      console.error(error);
-    } else {
-      toast.success("Diagnostic center added successfully");
-      setShowAddDiagnosticDialog(false);
-      setNewDiagnostic({
-        name: "",
-        location: "Dhaka",
-        address: "",
-        phone: "",
-        open_hours: "",
-        image_url: "",
-        services: [],
-      });
-      fetchData();
-    }
-  };
-
-  const addServiceToNew = () => {
-    if (newService.name && newService.price) {
-      setNewDiagnostic(prev => ({
-        ...prev,
-        services: [...prev.services, { ...newService }],
-      }));
-      setNewService({ name: "", price: "" });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -327,24 +167,6 @@ export default function Hospitals() {
               Discover hospitals and diagnostic centers near you
             </p>
           </motion.div>
-
-          {/* Admin Mode Toggle */}
-          {isAdmin && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex justify-center mb-6"
-            >
-              <Button
-                variant={adminMode ? "accent" : "outline"}
-                onClick={() => setAdminMode(!adminMode)}
-                className="gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                {adminMode ? "Exit Admin Mode" : "Admin Mode"}
-              </Button>
-            </motion.div>
-          )}
 
           {/* Search Box */}
           <motion.div
@@ -380,7 +202,7 @@ export default function Hospitals() {
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-healthcare-lg z-50 overflow-hidden">
                     <ul className="py-2 max-h-64 overflow-y-auto">
-                      {locationsList.map((location) => (
+                      {locations.map((location) => (
                         <li key={location.value}>
                           <button
                             onClick={() => {
@@ -467,20 +289,6 @@ export default function Hospitals() {
       {/* Main Content */}
       <section className="healthcare-section">
         <div className="healthcare-container">
-          {/* Admin Add Button */}
-          {adminMode && (
-            <div className="flex justify-end mb-6">
-              <Button
-                variant="healthcare"
-                onClick={() => activeTab === "hospitals" ? setShowAddHospitalDialog(true) : setShowAddDiagnosticDialog(true)}
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add {activeTab === "hospitals" ? "Hospital" : "Diagnostic Center"}
-              </Button>
-            </div>
-          )}
-
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -516,24 +324,6 @@ export default function Hospitals() {
                           transition={{ delay: index * 0.1 }}
                           className="healthcare-card overflow-hidden"
                         >
-                          {/* Admin Controls */}
-                          {adminMode && (
-                            <AdminFacilityControls
-                              type="hospital"
-                              facility={hospital}
-                              onUpdate={fetchData}
-                            />
-                          )}
-
-                          {/* Status Badge for Admin */}
-                          {adminMode && hospital.status !== "approved" && (
-                            <div className="mb-3">
-                              <span className="text-xs px-2 py-1 bg-accent/20 text-accent rounded">
-                                {hospital.status}
-                              </span>
-                            </div>
-                          )}
-
                           <div className="relative h-48 -m-6 mb-4">
                             <img
                               src={hospital.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop"}
@@ -612,24 +402,6 @@ export default function Hospitals() {
                           transition={{ delay: index * 0.1 }}
                           className="healthcare-card overflow-hidden"
                         >
-                          {/* Admin Controls */}
-                          {adminMode && (
-                            <AdminFacilityControls
-                              type="diagnostic"
-                              facility={diagnostic}
-                              onUpdate={fetchData}
-                            />
-                          )}
-
-                          {/* Status Badge for Admin */}
-                          {adminMode && diagnostic.status !== "approved" && (
-                            <div className="mb-3">
-                              <span className="text-xs px-2 py-1 bg-accent/20 text-accent rounded">
-                                {diagnostic.status}
-                              </span>
-                            </div>
-                          )}
-
                           <div className="relative h-40 -m-6 mb-4">
                             <img
                               src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop"}
@@ -693,206 +465,6 @@ export default function Hospitals() {
           )}
         </div>
       </section>
-
-      {/* Add Hospital Dialog */}
-      <Dialog open={showAddHospitalDialog} onOpenChange={setShowAddHospitalDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Hospital</DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <Label>Name *</Label>
-              <Input
-                value={newHospital.name}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Type *</Label>
-              <Select
-                value={newHospital.type}
-                onValueChange={(value) => setNewHospital(prev => ({ ...prev, type: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {hospitalTypes.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Location *</Label>
-              <Select
-                value={newHospital.location}
-                onValueChange={(value) => setNewHospital(prev => ({ ...prev, location: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locationsList.filter(l => l.value !== "all").map((l) => (
-                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Address *</Label>
-              <Textarea
-                value={newHospital.address}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, address: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input
-                value={newHospital.phone}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Beds</Label>
-              <Input
-                type="number"
-                value={newHospital.beds}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, beds: e.target.value }))}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Specialties (comma separated)</Label>
-              <Input
-                value={newHospital.specialties}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, specialties: e.target.value }))}
-                placeholder="Cardiology, Neurology, Pediatrics..."
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Image URL</Label>
-              <Input
-                value={newHospital.image_url}
-                onChange={(e) => setNewHospital(prev => ({ ...prev, image_url: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddHospitalDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddHospital} disabled={addingFacility}>
-              {addingFacility ? "Adding..." : "Add Hospital"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Diagnostic Dialog */}
-      <Dialog open={showAddDiagnosticDialog} onOpenChange={setShowAddDiagnosticDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Diagnostic Center</DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <Label>Name *</Label>
-              <Input
-                value={newDiagnostic.name}
-                onChange={(e) => setNewDiagnostic(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Location *</Label>
-              <Select
-                value={newDiagnostic.location}
-                onValueChange={(value) => setNewDiagnostic(prev => ({ ...prev, location: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {locationsList.filter(l => l.value !== "all").map((l) => (
-                    <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input
-                value={newDiagnostic.phone}
-                onChange={(e) => setNewDiagnostic(prev => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Address *</Label>
-              <Textarea
-                value={newDiagnostic.address}
-                onChange={(e) => setNewDiagnostic(prev => ({ ...prev, address: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Open Hours</Label>
-              <Input
-                value={newDiagnostic.open_hours}
-                onChange={(e) => setNewDiagnostic(prev => ({ ...prev, open_hours: e.target.value }))}
-                placeholder="e.g., 8:00 AM - 10:00 PM"
-              />
-            </div>
-            <div>
-              <Label>Image URL</Label>
-              <Input
-                value={newDiagnostic.image_url}
-                onChange={(e) => setNewDiagnostic(prev => ({ ...prev, image_url: e.target.value }))}
-              />
-            </div>
-
-            {/* Services */}
-            <div className="md:col-span-2 border-t pt-4">
-              <Label className="mb-2 block">Services & Prices</Label>
-              <div className="space-y-2">
-                {newDiagnostic.services.map((service, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-muted p-2 rounded text-sm">
-                    <span className="flex-1">{service.name}</span>
-                    <span className="text-muted-foreground">{service.price}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  placeholder="Service name"
-                  value={newService.name}
-                  onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="Price"
-                  value={newService.price}
-                  onChange={(e) => setNewService(prev => ({ ...prev, price: e.target.value }))}
-                  className="w-32"
-                />
-                <Button variant="outline" size="icon" onClick={addServiceToNew}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDiagnosticDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddDiagnostic} disabled={addingFacility}>
-              {addingFacility ? "Adding..." : "Add Diagnostic Center"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
