@@ -194,6 +194,76 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_favorites: {
+        Row: {
+          created_at: string
+          doctor_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doctor_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doctor_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_favorites_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctor_reviews: {
+        Row: {
+          created_at: string
+          doctor_id: string
+          id: string
+          rating: number
+          review_text: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doctor_id: string
+          id?: string
+          rating: number
+          review_text?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doctor_id?: string
+          id?: string
+          rating?: number
+          review_text?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_reviews_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctors: {
         Row: {
           created_at: string
@@ -667,6 +737,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_doctor_average_rating: {
+        Args: { doctor_uuid: string }
+        Returns: number
+      }
+      get_doctor_review_count: {
+        Args: { doctor_uuid: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
