@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Doctors from "./pages/Doctors";
 import DoctorProfile from "./pages/DoctorProfile";
 import Hospitals from "./pages/Hospitals";
+import HospitalDetail from "./pages/HospitalDetail";
+import DiagnosticDetail from "./pages/DiagnosticDetail";
 import VerifyDoctor from "./pages/VerifyDoctor";
 import HealthFeed from "./pages/Articles";
 import HealthFeedDetail from "./pages/ArticleDetail";
@@ -45,7 +47,9 @@ const App = () => (
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/doctors/:id" element={<DoctorProfile />} />
             <Route path="/hospitals" element={<Hospitals />} />
+            <Route path="/hospitals/:id" element={<HospitalDetail />} />
             <Route path="/diagnostics" element={<Hospitals />} />
+            <Route path="/diagnostics/:id" element={<DiagnosticDetail />} />
             <Route path="/verify-doctor" element={<VerifyDoctor />} />
             <Route path="/health-feed" element={<HealthFeed />} />
             <Route path="/health-feed/:id" element={<HealthFeedDetail />} />
