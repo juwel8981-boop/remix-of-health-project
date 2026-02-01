@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,13 @@ const locations = [
 ];
 
 export default function Hospitals() {
-  const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">("hospitals");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isOnDiagnosticsRoute = location.pathname.includes("/diagnostics");
+  
+  const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">(
+    isOnDiagnosticsRoute ? "diagnostics" : "hospitals"
+  );
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -60,6 +67,11 @@ export default function Hospitals() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync active tab with route
+  useEffect(() => {
+    setActiveTab(isOnDiagnosticsRoute ? "diagnostics" : "hospitals");
+  }, [isOnDiagnosticsRoute]);
 
   useEffect(() => {
     fetchData();
@@ -322,7 +334,8 @@ export default function Hospitals() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          className="healthcare-card overflow-hidden"
+                          className="healthcare-card overflow-hidden cursor-pointer hover:shadow-healthcare-lg transition-shadow"
+                          onClick={() => navigate(`/hospitals/${hospital.id}`)}
                         >
                           <div className="relative h-48 -m-6 mb-4">
                             <img
@@ -372,11 +385,16 @@ export default function Hospitals() {
                               </div>
                             </div>
                             {hospital.phone && (
-                              <Button variant="healthcare" size="sm" asChild>
-                                <a href={`tel:${hospital.phone}`}>
-                                  <Phone className="w-4 h-4 mr-1" />
-                                  Contact
-                                </a>
+                              <Button 
+                                variant="healthcare" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = `tel:${hospital.phone}`;
+                                }}
+                              >
+                                <Phone className="w-4 h-4 mr-1" />
+                                Contact
                               </Button>
                             )}
                           </div>
@@ -400,7 +418,8 @@ export default function Hospitals() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          className="healthcare-card overflow-hidden"
+                          className="healthcare-card overflow-hidden cursor-pointer hover:shadow-healthcare-lg transition-shadow"
+                          onClick={() => navigate(`/diagnostics/${diagnostic.id}`)}
                         >
                           <div className="relative h-40 -m-6 mb-4">
                             <img
@@ -447,11 +466,16 @@ export default function Hospitals() {
                               <span className="font-semibold text-foreground">{diagnostic.rating || 0}</span>
                             </div>
                             {diagnostic.phone && (
-                              <Button variant="healthcare" size="sm" asChild>
-                                <a href={`tel:${diagnostic.phone}`}>
-                                  <Phone className="w-4 h-4 mr-1" />
-                                  Contact
-                                </a>
+                              <Button 
+                                variant="healthcare" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = `tel:${diagnostic.phone}`;
+                                }}
+                              >
+                                <Phone className="w-4 h-4 mr-1" />
+                                Contact
                               </Button>
                             )}
                           </div>
