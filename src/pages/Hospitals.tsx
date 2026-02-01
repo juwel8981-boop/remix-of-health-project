@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, ChevronDown, Map, List, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,10 +52,7 @@ const locations = [
 ];
 
 export default function Hospitals() {
-  const location = useLocation();
-  const defaultTab = location.pathname === "/diagnostics" ? "diagnostics" : "hospitals";
-  
-  const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">(defaultTab);
+  const [activeTab, setActiveTab] = useState<"hospitals" | "diagnostics">("hospitals");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -64,11 +60,6 @@ export default function Hospitals() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Update active tab when route changes
-  useEffect(() => {
-    setActiveTab(location.pathname === "/diagnostics" ? "diagnostics" : "hospitals");
-  }, [location.pathname]);
 
   useEffect(() => {
     fetchData();

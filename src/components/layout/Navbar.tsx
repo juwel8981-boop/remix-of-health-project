@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Building2 } from "lucide-react";
+import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -11,13 +11,9 @@ import { toast } from "sonner";
 
 const navLinks = [
   { name: "Find Doctors", href: "/doctors" },
+  { name: "Healthcare Facilities", href: "/hospitals" },
   { name: "Verify Doctor", href: "/verify-doctor" },
   { name: "Health Feed", href: "/health-feed" },
-];
-
-const facilitiesSubLinks = [
-  { name: "Hospitals", href: "/hospitals" },
-  { name: "Diagnostics", href: "/diagnostics" },
 ];
 
 type UserRole = "patient" | "doctor" | "admin" | null;
@@ -25,7 +21,6 @@ type UserRole = "patient" | "doctor" | "admin" | null;
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showFacilitiesMenu, setShowFacilitiesMenu] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
@@ -145,7 +140,7 @@ export function Navbar() {
   };
 
   const isActive = (path: string) => location.pathname === path;
-  const isFacilitiesActive = location.pathname === "/hospitals" || location.pathname === "/diagnostics";
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <nav className="healthcare-container">
@@ -162,68 +157,7 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1">
-            {/* Find Doctors - first navLink */}
-            <Link
-              to="/doctors"
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                isActive("/doctors")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              Find Doctors
-            </Link>
-
-            {/* Healthcare Facilities Dropdown */}
-            <div 
-              className="relative"
-              onMouseEnter={() => setShowFacilitiesMenu(true)}
-              onMouseLeave={() => setShowFacilitiesMenu(false)}
-            >
-              <button
-                className={cn(
-                  "flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isFacilitiesActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                <Building2 className="w-4 h-4" />
-                Healthcare Facilities
-                <ChevronDown className={cn("w-3 h-3 transition-transform", showFacilitiesMenu && "rotate-180")} />
-              </button>
-
-              <AnimatePresence>
-                {showFacilitiesMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
-                    className="absolute top-full left-0 mt-1 w-48 bg-card rounded-xl border border-border shadow-healthcare-lg overflow-hidden z-50"
-                  >
-                    {facilitiesSubLinks.map((subLink) => (
-                      <Link
-                        key={subLink.name}
-                        to={subLink.href}
-                        onClick={() => setShowFacilitiesMenu(false)}
-                        className={cn(
-                          "block px-4 py-3 text-sm font-medium transition-colors",
-                          isActive(subLink.href)
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                      >
-                        {subLink.name}
-                      </Link>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Remaining nav links (Verify Doctor, Health Feed) */}
-            {navLinks.slice(1).map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.name}
                 to={link.href}
@@ -337,45 +271,7 @@ export function Navbar() {
               className="lg:hidden overflow-hidden"
             >
               <div className="py-4 space-y-2">
-                {/* Find Doctors */}
-                <Link
-                  to="/doctors"
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "block px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    isActive("/doctors")
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  )}
-                >
-                  Find Doctors
-                </Link>
-
-                {/* Healthcare Facilities Section */}
-                <div className="pt-2 border-t border-border">
-                  <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Building2 className="w-3 h-3" />
-                    Healthcare Facilities
-                  </p>
-                  {facilitiesSubLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.href}
-                      onClick={() => setIsOpen(false)}
-                      className={cn(
-                        "block px-4 py-3 pl-8 rounded-lg text-sm font-medium transition-colors",
-                        isActive(link.href)
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      {link.name}
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Remaining links (Verify Doctor, Health Feed) */}
-                {navLinks.slice(1).map((link) => (
+                {navLinks.map((link) => (
                   <Link
                     key={link.name}
                     to={link.href}
