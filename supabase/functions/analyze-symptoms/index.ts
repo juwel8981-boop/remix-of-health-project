@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -12,10 +12,10 @@ serve(async (req) => {
 
   try {
     const { symptoms } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!DEEPSEEK_API_KEY) {
+      throw new Error("DEEPSEEK_API_KEY is not configured");
     }
 
     const systemPrompt = `You are a medical specialty recommendation assistant for a healthcare platform in Bangladesh. You understand both English and Bangla (বাংলা) languages fluently.
@@ -47,18 +47,21 @@ Respond ONLY with a valid JSON object in this exact format:
   "disclaimer": "A brief medical disclaimer in the same language as the input"
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // DeepSeek API (OpenAI-compatible endpoint)
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "deepseek-r1t2-chimera",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Patient symptoms: ${symptoms}` },
         ],
+        temperature: 0.7,
+        max_tokens: 1024,
       }),
     });
 
@@ -69,15 +72,15 @@ Respond ONLY with a valid JSON object in this exact format:
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Service temporarily unavailable. Please try again later." }), {
-          status: 402,
+      if (response.status === 402 || response.status === 401) {
+        return new Response(JSON.stringify({ error: "API authentication failed. Please check your API key." }), {
+          status: response.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+      console.error("DeepSeek API error:", response.status, errorText);
+      throw new Error(`DeepSeek API error: ${response.status}`);
     }
 
     const data = await response.json();
