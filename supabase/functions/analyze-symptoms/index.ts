@@ -445,21 +445,32 @@ Remember: Analyze ALL symptoms and map them to their appropriate specialties. Do
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402 || response.status === 401) {
-        return new Response(JSON.stringify({ error: "API authentication failed. Please check your API key." }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const errorText = await response.text();
       console.error("DeepSeek API error:", response.status, errorText);
-      throw new Error(`DeepSeek API error: ${response.status}`);
+
+      // Fallback: still return multi-specialty recommendations from deterministic inference
+      const inferred = inferSpecialties(String(symptoms || ""));
+      const fallbackRecs: Recommendation[] = inferred.map((inf) => ({
+        specialty: inf.specialty,
+        specialty_bn: inf.specialty_bn,
+        reason:
+          inf.matched.length > 0
+            ? `Based on your symptoms (keywords: ${inf.matched.join(", ")}), this specialist may be relevant.`
+            : "Based on your symptom description, this specialist may be relevant.",
+        urgency: "low",
+        related_symptoms: inf.matched,
+      }));
+
+      const fallbackPayload = {
+        recommendations: fallbackRecs,
+        overall_urgency: computeOverallUrgency(fallbackRecs),
+        disclaimer:
+          "AI results are temporarily unavailable; these suggestions are based on symptom matching only and are not a diagnosis. Please consult a qualified doctor. / AI সাময়িকভাবে অনুপলব্ধ; এগুলো কেবল লক্ষণ মিলিয়ে দেওয়া পরামর্শ, রোগ নির্ণয় নয়।",
+      };
+
+      return new Response(JSON.stringify(fallbackPayload), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
