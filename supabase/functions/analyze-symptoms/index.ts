@@ -60,6 +60,314 @@ function detectTruncation(response: string): boolean {
   return truncationPatterns.some((p) => p.test(text));
 }
 
+type Urgency = "low" | "medium" | "high";
+
+type Recommendation = {
+  specialty: string;
+  specialty_bn?: string;
+  reason: string;
+  urgency: Urgency;
+  related_symptoms?: string[];
+};
+
+type InferredSpecialty = {
+  specialty: string;
+  specialty_bn: string;
+  matched: string[];
+};
+
+function normalizeText(input: string): string {
+  return input.toLowerCase();
+}
+
+function containsAny(text: string, patterns: string[]): boolean {
+  return patterns.some((p) => text.includes(p));
+}
+
+function inferSpecialties(symptomsRaw: string): InferredSpecialty[] {
+  const text = normalizeText(symptomsRaw);
+
+  const rules: Array<{
+    specialty: string;
+    specialty_bn: string;
+    patterns: string[];
+    label: string;
+  }> = [
+    {
+      specialty: "Dermatologist",
+      specialty_bn: "চর্মরোগ বিশেষজ্ঞ",
+      label: "skin",
+      patterns: [
+        "rash",
+        "skin rash",
+        "itch",
+        "itching",
+        "hives",
+        "eczema",
+        "acne",
+        "hair loss",
+        "scalp",
+        "dermat",
+        "ত্বক",
+        "র‍্যাশ",
+        "র্যাশ",
+        "চুলক",
+        "ব্রণ",
+        "চুল পড়",
+      ],
+    },
+    {
+      specialty: "Neurologist",
+      specialty_bn: "স্নায়ুরোগ বিশেষজ্ঞ",
+      label: "neuro",
+      patterns: [
+        "headache",
+        "migraine",
+        "seiz",
+        "numb",
+        "tingl",
+        "weakness",
+        "tremor",
+        "memory",
+        "dizziness",
+        "vertigo",
+        "stroke",
+        "মাথা ব্যথা",
+        "মাথাব্যথা",
+        "খিঁচ",
+        "অসাড়",
+        "ঝিনঝিনি",
+        "কাঁপুনি",
+        "স্মৃতি",
+        "মাথা ঘোর",
+      ],
+    },
+    {
+      specialty: "Cardiologist",
+      specialty_bn: "হৃদরোগ বিশেষজ্ঞ",
+      label: "cardiac",
+      patterns: [
+        "chest pain",
+        "chest tight",
+        "palpitation",
+        "shortness of breath",
+        "sob",
+        "heart",
+        "bp",
+        "blood pressure",
+        "বুকে ব্যথা",
+        "বুকে চাপ",
+        "বুক ধড়ফড়",
+        "শ্বাসকষ্ট",
+        "হৃদ",
+        "রক্তচাপ",
+      ],
+    },
+    {
+      specialty: "Gastroenterologist",
+      specialty_bn: "পরিপাকতন্ত্র বিশেষজ্ঞ",
+      label: "gi",
+      patterns: [
+        "stomach",
+        "abdominal",
+        "abdomen",
+        "nausea",
+        "vomit",
+        "diarr",
+        "constip",
+        "reflux",
+        "heartburn",
+        "gas",
+        "bloating",
+        "পেট",
+        "বমি",
+        "ডায়রিয়া",
+        "ডায়রিয়া",
+        "কোষ্ঠ",
+        "গ্যাস",
+        "অম্বল",
+        "পেট ফাঁপা",
+      ],
+    },
+    {
+      specialty: "Orthopedic",
+      specialty_bn: "হাড় ও জয়েন্ট বিশেষজ্ঞ",
+      label: "ortho",
+      patterns: [
+        "joint",
+        "bone",
+        "back pain",
+        "knee",
+        "shoulder",
+        "fract",
+        "sprain",
+        "arthritis",
+        "জয়েন্ট",
+        "হাড়",
+        "পিঠে ব্যথা",
+        "ঘাড়ে ব্যথা",
+        "হাঁটু",
+      ],
+    },
+    {
+      specialty: "ENT Specialist",
+      specialty_bn: "নাক, কান, গলা বিশেষজ্ঞ",
+      label: "ent",
+      patterns: [
+        "ear",
+        "throat",
+        "tonsil",
+        "sinus",
+        "nose",
+        "hearing",
+        "tinnitus",
+        "sore throat",
+        "কান",
+        "গলা",
+        "টনসিল",
+        "সাইনাস",
+        "নাক",
+        "শুনতে",
+      ],
+    },
+    {
+      specialty: "Ophthalmologist",
+      specialty_bn: "চক্ষু বিশেষজ্ঞ",
+      label: "eye",
+      patterns: [
+        "eye",
+        "vision",
+        "blur",
+        "blurry",
+        "red eye",
+        "light sensitivity",
+        "চোখ",
+        "দৃষ্টি",
+        "ঝাপসা",
+        "আলো সংবেদন",
+      ],
+    },
+    {
+      specialty: "Pulmonologist",
+      specialty_bn: "ফুসফুস বিশেষজ্ঞ",
+      label: "lung",
+      patterns: [
+        "cough",
+        "wheez",
+        "asthma",
+        "breath",
+        "lung",
+        "কাশি",
+        "শ্বাস",
+        "হাঁপানি",
+        "ফুসফুস",
+      ],
+    },
+    {
+      specialty: "Pediatrician",
+      specialty_bn: "শিশু বিশেষজ্ঞ",
+      label: "child",
+      patterns: [
+        "child",
+        "baby",
+        "infant",
+        "toddler",
+        "newborn",
+        "শিশু",
+        "বাচ্চা",
+        "বেবি",
+      ],
+    },
+    {
+      specialty: "Psychiatrist",
+      specialty_bn: "মানসিক রোগ বিশেষজ্ঞ",
+      label: "mental",
+      patterns: [
+        "anxiety",
+        "panic",
+        "depress",
+        "sleep",
+        "insomnia",
+        "stress",
+        "suic",
+        "উদ্বেগ",
+        "ডিপ্রেশন",
+        "ঘুম",
+        "স্ট্রেস",
+        "মানসিক",
+      ],
+    },
+  ];
+
+  const inferred: InferredSpecialty[] = [];
+  for (const rule of rules) {
+    if (containsAny(text, rule.patterns)) {
+      // collect a small set of matched hints for UI if needed
+      const matched = rule.patterns.filter((p) => text.includes(p)).slice(0, 6);
+      inferred.push({ specialty: rule.specialty, specialty_bn: rule.specialty_bn, matched });
+    }
+  }
+
+  // If nothing matched, at least include a general physician fallback
+  if (inferred.length === 0) {
+    inferred.push({ specialty: "General Physician", specialty_bn: "সাধারণ চিকিৎসক", matched: [] });
+  }
+
+  // Ensure General Physician is included for broad symptoms (fever/fatigue/etc.)
+  const generalPatterns = ["fever", "fatigue", "weakness", "weight loss", "j্বর", "জ্বর", "ক্লান্ত", "দুর্বল", "দুর্বলতা"];
+  if (containsAny(text, generalPatterns) && !inferred.some((i) => i.specialty === "General Physician")) {
+    inferred.unshift({ specialty: "General Physician", specialty_bn: "সাধারণ চিকিৎসক", matched: [] });
+  }
+
+  // Deduplicate
+  const seen = new Set<string>();
+  return inferred.filter((i) => {
+    const key = i.specialty.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeRecommendations(
+  existing: Recommendation[],
+  inferred: InferredSpecialty[],
+  inputSymptoms: string
+): Recommendation[] {
+  const bySpecialty = new Map<string, Recommendation>();
+
+  for (const r of existing || []) {
+    if (!r?.specialty) continue;
+    bySpecialty.set(r.specialty.toLowerCase(), r);
+  }
+
+  for (const inf of inferred) {
+    const key = inf.specialty.toLowerCase();
+    if (bySpecialty.has(key)) continue;
+
+    const reason =
+      inf.matched.length > 0
+        ? `Based on symptom keywords detected (${inf.matched.join(", ")}), this specialty may be relevant.`
+        : `Based on the overall symptom description, this specialty may be relevant.`;
+
+    bySpecialty.set(key, {
+      specialty: inf.specialty,
+      specialty_bn: inf.specialty_bn,
+      reason,
+      urgency: "low",
+      related_symptoms: inf.matched.length ? inf.matched : inputSymptoms.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6),
+    });
+  }
+
+  return Array.from(bySpecialty.values());
+}
+
+function computeOverallUrgency(recs: Recommendation[]): Urgency {
+  const score = (u?: string) => (u === "high" ? 3 : u === "medium" ? 2 : 1);
+  const max = Math.max(...(recs || []).map((r) => score(r.urgency)), 1);
+  return max === 3 ? "high" : max === 2 ? "medium" : "low";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -199,7 +507,17 @@ Remember: Analyze ALL symptoms and map them to their appropriate specialties. Do
       }
     }
 
-    return new Response(JSON.stringify(recommendation), {
+    // Enforce multi-specialty coverage: merge AI output with deterministic inference
+    const ensured = recommendation as any;
+    const inferred = inferSpecialties(String(symptoms || ""));
+    ensured.recommendations = mergeRecommendations(
+      ensured.recommendations as Recommendation[],
+      inferred,
+      String(symptoms || "")
+    );
+    ensured.overall_urgency = computeOverallUrgency(ensured.recommendations);
+
+    return new Response(JSON.stringify(ensured), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
