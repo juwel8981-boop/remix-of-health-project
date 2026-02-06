@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Brain, Sparkles, ArrowRight, Stethoscope, Heart, Activity, 
   Thermometer, HeadphonesIcon, Eye, Bone, Baby, Clock, CheckCircle2, MapPin, 
-  Send, Languages
+  Send, Languages, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,6 +60,12 @@ const symptomCategories = [
     { en: "Rashes", bn: "র‍্যাশ" },
     { en: "Behavioral", bn: "আচরণগত" }
   ]},
+  { id: "skin", name: "Skin", nameBn: "ত্বক", icon: Activity, symptoms: [
+    { en: "Skin Rash", bn: "ত্বকে র‍্যাশ" },
+    { en: "Itching", bn: "চুলকানি" },
+    { en: "Acne", bn: "ব্রণ" },
+    { en: "Hair Loss", bn: "চুল পড়া" }
+  ]},
 ];
 
 // Fallback doctors for recommendations
@@ -105,13 +111,31 @@ const specialtyDoctors: Record<string, any[]> = {
     { id: 19, name: "Dr. Mohammad Waziul Alam Chowdhury", hospital: "National Institute of Mental Health", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
     { id: 20, name: "Dr. Helal Uddin Ahmed", hospital: "United Hospital", rating: 4.8, fee: "৳1,800", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
   ],
+  "Ophthalmologist": [
+    { id: 23, name: "Dr. Iftekhar Ahmed", hospital: "Ispahani Islamia Eye Hospital", rating: 4.9, fee: "৳1,500", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 24, name: "Dr. Sharmin Hossain", hospital: "BIRDEM Hospital", rating: 4.8, fee: "৳1,200", image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Gastroenterologist": [
+    { id: 25, name: "Dr. Md. Fazlul Karim", hospital: "Square Hospital", rating: 4.9, fee: "৳2,000", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 26, name: "Dr. A.K.M. Fazlul Haque", hospital: "Labaid Hospital", rating: 4.8, fee: "৳1,800", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
+  "Pulmonologist": [
+    { id: 27, name: "Dr. Md. Mostafizur Rahman", hospital: "National Institute of Diseases of the Chest", rating: 4.9, fee: "৳1,800", image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" },
+    { id: 28, name: "Dr. Kazi Saifuddin Bennoor", hospital: "Square Hospital", rating: 4.8, fee: "৳2,000", image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&h=100&fit=crop&crop=face" },
+  ],
 };
 
-interface AIRecommendation {
+interface SpecialtyRecommendation {
   specialty: string;
   specialty_bn?: string;
   reason: string;
   urgency: "low" | "medium" | "high";
+  related_symptoms?: string[];
+}
+
+interface AIRecommendation {
+  recommendations: SpecialtyRecommendation[];
+  overall_urgency: "low" | "medium" | "high";
   disclaimer: string;
 }
 
@@ -157,7 +181,26 @@ export default function AIDoctorFinder() {
         throw new Error(data.error);
       }
 
-      setRecommendation(data);
+      // Handle both new multi-specialty and legacy single-specialty responses
+      if (data.recommendations && Array.isArray(data.recommendations)) {
+        setRecommendation(data);
+      } else if (data.specialty) {
+        // Legacy format - convert to new format
+        setRecommendation({
+          recommendations: [{
+            specialty: data.specialty,
+            specialty_bn: data.specialty_bn,
+            reason: data.reason,
+            urgency: data.urgency,
+            related_symptoms: []
+          }],
+          overall_urgency: data.urgency,
+          disclaimer: data.disclaimer
+        });
+      } else {
+        throw new Error("Invalid response format");
+      }
+
       setStep("result");
     } catch (error) {
       console.error("Error analyzing symptoms:", error);
@@ -187,6 +230,14 @@ export default function AIDoctorFinder() {
     }
   };
 
+  const getUrgencyLabel = (urgency: string) => {
+    switch (urgency) {
+      case "high": return "জরুরি / Urgent";
+      case "medium": return "মাঝারি / Moderate";
+      default: return "সাধারণ / Normal";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -204,7 +255,7 @@ export default function AIDoctorFinder() {
               AI Doctor Finder
             </h1>
             <p className="text-primary-foreground/80 mb-2">
-              Describe your symptoms and our AI will recommend the right specialist for you
+              Describe your symptoms and our AI will recommend the right specialist(s) for you
             </p>
             <p className="text-primary-foreground/70 text-sm flex items-center justify-center gap-2">
               <Languages className="w-4 h-4" />
@@ -331,7 +382,7 @@ export default function AIDoctorFinder() {
                       <Textarea
                         value={customSymptoms}
                         onChange={(e) => setCustomSymptoms(e.target.value)}
-                        placeholder="Example: I have fever and headache for 3 days...&#10;উদাহরণ: আমার ৩ দিন ধরে জ্বর ও মাথা ব্যথা..."
+                        placeholder="Example: I have fever, skin rash, and headache for 3 days...&#10;উদাহরণ: আমার ৩ দিন ধরে জ্বর, ত্বকে র‍্যাশ ও মাথা ব্যথা..."
                         className="min-h-[150px] text-base"
                       />
 
@@ -369,7 +420,7 @@ export default function AIDoctorFinder() {
                   Analyzing Your Symptoms / লক্ষণ বিশ্লেষণ করা হচ্ছে
                 </h2>
                 <p className="text-muted-foreground">
-                  Our AI is finding the best specialist for you...
+                  Our AI is finding the best specialist(s) for you...
                 </p>
                 <p className="text-muted-foreground text-sm mt-1">
                   আমাদের AI আপনার জন্য সেরা বিশেষজ্ঞ খুঁজছে...
@@ -385,7 +436,7 @@ export default function AIDoctorFinder() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-6"
               >
-                {/* Recommendation Card */}
+                {/* Overall Summary Card */}
                 <div className="healthcare-card border-2 border-primary">
                   <div className="flex items-start gap-4 mb-6">
                     <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -393,36 +444,24 @@ export default function AIDoctorFinder() {
                     </div>
                     <div className="flex-1">
                       <h2 className="font-display text-xl font-semibold text-foreground mb-1">
-                        Recommended Specialist / প্রস্তাবিত বিশেষজ্ঞ
+                        Recommended Specialists / প্রস্তাবিত বিশেষজ্ঞ
                       </h2>
-                      <p className="text-2xl font-bold text-primary">
-                        {recommendation.specialty}
-                        {recommendation.specialty_bn && (
-                          <span className="text-lg font-normal text-muted-foreground ml-2">
-                            ({recommendation.specialty_bn})
-                          </span>
-                        )}
+                      <p className="text-muted-foreground">
+                        Based on your symptoms, we recommend consulting the following {recommendation.recommendations.length} specialist{recommendation.recommendations.length > 1 ? 's' : ''}:
                       </p>
                     </div>
-                    {recommendation.urgency && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getUrgencyColor(recommendation.urgency)}`}>
-                        {recommendation.urgency === "high" ? "জরুরি / Urgent" : 
-                         recommendation.urgency === "medium" ? "মাঝারি / Moderate" : "সাধারণ / Normal"}
+                    {recommendation.overall_urgency && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize flex items-center gap-1 ${getUrgencyColor(recommendation.overall_urgency)}`}>
+                        {recommendation.overall_urgency === "high" && <AlertTriangle className="w-3 h-3" />}
+                        {getUrgencyLabel(recommendation.overall_urgency)}
                       </span>
                     )}
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-muted mb-6">
-                    <p className="text-muted-foreground">
-                      <Sparkles className="w-4 h-4 inline mr-2 text-accent" />
-                      {recommendation.reason}
-                    </p>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
                     <span className="text-sm text-muted-foreground">Based on / ভিত্তিতে:</span>
                     {inputMode === "text" ? (
-                      <span className="healthcare-badge text-xs">{customSymptoms.slice(0, 50)}...</span>
+                      <span className="healthcare-badge text-xs">{customSymptoms.slice(0, 100)}{customSymptoms.length > 100 ? '...' : ''}</span>
                     ) : (
                       selectedSymptoms.map(symptom => (
                         <span key={symptom} className="healthcare-badge text-xs">{symptom}</span>
@@ -431,52 +470,97 @@ export default function AIDoctorFinder() {
                   </div>
                 </div>
 
-                {/* Recommended Doctors */}
-                <div className="healthcare-card">
-                  <h3 className="font-display text-lg font-semibold text-foreground mb-4">
-                    Available {recommendation.specialty}s / উপলব্ধ বিশেষজ্ঞরা
-                  </h3>
+                {/* Individual Specialty Recommendations */}
+                {recommendation.recommendations.map((rec, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="healthcare-card"
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg font-bold text-primary">{index + 1}</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-primary">
+                          {rec.specialty}
+                          {rec.specialty_bn && (
+                            <span className="text-base font-normal text-muted-foreground ml-2">
+                              ({rec.specialty_bn})
+                            </span>
+                          )}
+                        </h3>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize mt-1 ${getUrgencyColor(rec.urgency)}`}>
+                          {getUrgencyLabel(rec.urgency)}
+                        </span>
+                      </div>
+                    </div>
 
-                  <div className="space-y-4">
-                    {getDoctorsForSpecialty(recommendation.specialty).map((doctor) => (
-                      <Link
-                        key={doctor.id}
-                        to={`/doctors/${doctor.id}`}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-muted hover:bg-muted/80 transition-colors"
-                      >
-                        <img
-                          src={doctor.image}
-                          alt={doctor.name}
-                          className="w-16 h-16 rounded-xl object-cover"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground">{doctor.name}</h4>
-                          <p className="text-sm text-primary">{recommendation.specialty}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="w-3 h-3" />
-                            {doctor.hospital}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-foreground">{doctor.fee}</p>
-                          <div className="flex items-center gap-1 text-sm">
-                            <span className="text-accent">★</span>
-                            <span className="text-foreground">{doctor.rating}</span>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                      </Link>
-                    ))}
-                  </div>
+                    <div className="p-4 rounded-xl bg-muted mb-4">
+                      <p className="text-muted-foreground">
+                        <Sparkles className="w-4 h-4 inline mr-2 text-accent" />
+                        {rec.reason}
+                      </p>
+                    </div>
 
-                  <div className="flex gap-3 mt-6">
-                    <Button variant="healthcare-outline" onClick={resetFinder} className="flex-1">
-                      Try Different Symptoms / আবার চেষ্টা করুন
-                    </Button>
-                    <Button variant="healthcare" asChild className="flex-1">
-                      <Link to="/doctors">View All Doctors / সব ডাক্তার</Link>
-                    </Button>
-                  </div>
+                    {rec.related_symptoms && rec.related_symptoms.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="text-xs text-muted-foreground">Related symptoms:</span>
+                        {rec.related_symptoms.map((symptom, idx) => (
+                          <span key={idx} className="healthcare-badge text-xs">{symptom}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Doctors for this specialty */}
+                    <div className="border-t border-border pt-4">
+                      <h4 className="font-medium text-foreground mb-3">
+                        Available {rec.specialty}s / উপলব্ধ বিশেষজ্ঞরা
+                      </h4>
+                      <div className="space-y-3">
+                        {getDoctorsForSpecialty(rec.specialty).slice(0, 2).map((doctor) => (
+                          <Link
+                            key={doctor.id}
+                            to={`/doctors/${doctor.id}`}
+                            className="flex items-center gap-4 p-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors"
+                          >
+                            <img
+                              src={doctor.image}
+                              alt={doctor.name}
+                              className="w-12 h-12 rounded-xl object-cover"
+                            />
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-foreground">{doctor.name}</h5>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <MapPin className="w-3 h-3" />
+                                {doctor.hospital}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-foreground">{doctor.fee}</p>
+                              <div className="flex items-center gap-1 text-sm">
+                                <span className="text-accent">★</span>
+                                <span className="text-foreground">{doctor.rating}</span>
+                              </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button variant="healthcare-outline" onClick={resetFinder} className="flex-1">
+                    Try Different Symptoms / আবার চেষ্টা করুন
+                  </Button>
+                  <Button variant="healthcare" asChild className="flex-1">
+                    <Link to="/doctors">View All Doctors / সব ডাক্তার</Link>
+                  </Button>
                 </div>
 
                 {/* Disclaimer */}
