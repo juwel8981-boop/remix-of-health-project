@@ -94,10 +94,32 @@ function inferSpecialties(symptomsRaw: string): InferredSpecialty[] {
     label: string;
   }> = [
     {
+      specialty: "General Physician",
+      specialty_bn: "সাধারণ চিকিৎসক",
+      label: "general",
+      patterns: [
+        // explicit specialty mentions
+        "general physician",
+        "general doctor",
+        "gp",
+        "physician",
+        "medicine specialist",
+        "internal medicine",
+        "family doctor",
+        "sadharon chikitsok",
+        "সাধারণ চিকিৎসক",
+        "জেনারেল ফিজিশিয়ান",
+        "জেনারেল ফিজিশিয়ান",
+        "মেডিসিন",
+        "ডাক্তার",
+      ],
+    },
+    {
       specialty: "Dermatologist",
       specialty_bn: "চর্মরোগ বিশেষজ্ঞ",
       label: "skin",
       patterns: [
+        // symptoms
         "rash",
         "skin rash",
         "itch",
@@ -107,7 +129,12 @@ function inferSpecialties(symptomsRaw: string): InferredSpecialty[] {
         "acne",
         "hair loss",
         "scalp",
+        // explicit specialty/category mentions
         "dermat",
+        "dermatologist",
+        "skin specialist",
+        "চর্মরোগ",
+        "ত্বক বিশেষজ্ঞ",
         "ত্বক",
         "র‍্যাশ",
         "র্যাশ",
@@ -121,6 +148,7 @@ function inferSpecialties(symptomsRaw: string): InferredSpecialty[] {
       specialty_bn: "স্নায়ুরোগ বিশেষজ্ঞ",
       label: "neuro",
       patterns: [
+        // symptoms
         "headache",
         "migraine",
         "seiz",
@@ -132,6 +160,15 @@ function inferSpecialties(symptomsRaw: string): InferredSpecialty[] {
         "dizziness",
         "vertigo",
         "stroke",
+        // explicit specialty/category mentions
+        "neuro",
+        "neurologist",
+        "brain specialist",
+        "nerve specialist",
+        "স্নায়ু",
+        "স্নায়ু",
+        "স্নায়ুরোগ",
+        "স্নায়ুরোগ",
         "মাথা ব্যথা",
         "মাথাব্যথা",
         "খিঁচ",
