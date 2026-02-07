@@ -12,7 +12,7 @@ import { toast } from "sonner";
 const navLinks = [
   { name: "Find Doctors", href: "/doctors" },
   { name: "Healthcare Facilities", href: "/hospitals" },
-  { name: "Verify Doctor", href: "/verify-doctor" },
+  { name: "Verify Personnel", href: "/verify-doctor" },
   { name: "Health Feed", href: "/health-feed" },
 ];
 
