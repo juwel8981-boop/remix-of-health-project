@@ -6,7 +6,7 @@ const footerLinks = {
     { name: "Find Doctors", href: "/doctors" },
     { name: "Hospitals", href: "/hospitals" },
     { name: "Diagnostics", href: "/diagnostics" },
-    { name: "Verify Doctor", href: "/verify-doctor" },
+    { name: "Verify Personnel", href: "/verify-doctor" },
     { name: "Health Feed", href: "/health-feed" },
   ],
   company: [

@@ -190,7 +190,7 @@ export default function Index() {
                   <ChevronRight className="w-4 h-4" /> Nearby Hospitals
                 </Link>
                 <Link to="/verify-doctor" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors flex items-center gap-1">
-                  <ChevronRight className="w-4 h-4" /> Verify Doctor
+                  <ChevronRight className="w-4 h-4" /> Verify Personnel
                 </Link>
               </div>
             </motion.div>
