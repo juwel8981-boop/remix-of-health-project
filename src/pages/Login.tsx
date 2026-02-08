@@ -67,19 +67,8 @@ export default function Login() {
       .single();
 
     if (doctorProfile) {
-      if (doctorProfile.verification_status === 'approved') {
-        navigate("/doctor");
-      } else if (doctorProfile.verification_status === 'pending') {
-        setPendingDoctor(true);
-        await supabase.auth.signOut();
-      } else {
-        toast({
-          title: "Account Rejected",
-          description: "Your doctor registration has been rejected. Please contact support.",
-          variant: "destructive",
-        });
-        await supabase.auth.signOut();
-      }
+      // Allow all doctors to access the dashboard - they'll see appropriate status banners
+      navigate("/doctor");
       return;
     }
 
