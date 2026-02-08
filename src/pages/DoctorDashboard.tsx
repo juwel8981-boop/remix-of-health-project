@@ -10,6 +10,7 @@ import { DoctorVerificationBanner } from "@/components/doctor/DoctorVerification
 import { DoctorOverview } from "@/components/doctor/DoctorOverview";
 import { DoctorMyPatients } from "@/components/doctor/DoctorMyPatients";
 import { DoctorMyArticles } from "@/components/doctor/DoctorMyArticles";
+import { useDoctorRealtime } from "@/hooks/use-doctor-realtime";
 
 type TabType = "overview" | "my-patients" | "my-articles";
 
@@ -24,6 +25,7 @@ const sidebarLinks: { name: string; icon: typeof TrendingUp; tab: TabType | null
 ];
 
 interface DoctorProfile {
+  id: string;
   full_name: string;
   specialization: string;
   verification_status: string;
@@ -36,11 +38,16 @@ export default function DoctorDashboard() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    todayAppointments: 0,
-    totalPatients: 0,
-    avgRating: 4.9,
-    reviewCount: 0,
+
+  // Use realtime hook for live data
+  const { 
+    stats, 
+    todayAppointments, 
+    isLoading: realtimeLoading, 
+    lastUpdated, 
+    refresh 
+  } = useDoctorRealtime({ 
+    doctorId: doctorProfile?.id || null 
   });
 
   useEffect(() => {
@@ -60,41 +67,6 @@ export default function DoctorDashboard() {
       
       if (doctorData) {
         setDoctorProfile(doctorData);
-
-        // Fetch stats
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Today's appointments
-        const { count: todayCount } = await supabase
-          .from("appointments")
-          .select("id", { count: "exact", head: true })
-          .eq("doctor_id", doctorData.id)
-          .eq("appointment_date", today);
-
-        // Total unique patients
-        const { data: patientData } = await supabase
-          .from("appointments")
-          .select("patient_id")
-          .eq("doctor_id", doctorData.id);
-        
-        const uniquePatients = new Set(patientData?.map(p => p.patient_id)).size;
-
-        // Reviews count and average
-        const { count: reviewCount } = await supabase
-          .from("doctor_reviews")
-          .select("id", { count: "exact", head: true })
-          .eq("doctor_id", doctorData.id)
-          .eq("status", "approved");
-
-        const { data: ratingData } = await supabase
-          .rpc("get_doctor_average_rating", { doctor_uuid: doctorData.id });
-
-        setStats({
-          todayAppointments: todayCount || 0,
-          totalPatients: uniquePatients,
-          avgRating: ratingData || 4.9,
-          reviewCount: reviewCount || 0,
-        });
       }
 
       // Fetch avatar
@@ -132,7 +104,16 @@ export default function DoctorDashboard() {
       case "my-articles":
         return <DoctorMyArticles />;
       default:
-        return <DoctorOverview doctorProfile={doctorProfile} stats={stats} />;
+        return (
+          <DoctorOverview 
+            doctorProfile={doctorProfile} 
+            stats={stats}
+            appointments={todayAppointments}
+            isLoading={realtimeLoading}
+            lastUpdated={lastUpdated}
+            onRefresh={refresh}
+          />
+        );
     }
   };
 
