@@ -141,18 +141,36 @@
 
 @layer components {
   .healthcare-card {
-    @apply bg-card rounded-xl border border-border p-6;
+    @apply bg-card rounded-xl border border-border p-6 relative overflow-hidden;
     box-shadow: var(--shadow-card);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .healthcare-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .healthcare-card:hover::before {
+    transform: scaleX(1);
   }
 
   .healthcare-card:hover {
-    box-shadow: var(--shadow-xl);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl), 0 0 30px hsl(var(--primary) / 0.1);
+    transform: translateY(-4px);
+    border-color: hsl(var(--primary) / 0.2);
   }
 
   .healthcare-gradient-text {
-    background: var(--gradient-primary);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -167,27 +185,36 @@
   }
 
   .healthcare-badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-    background: hsl(var(--healthcare-blue-light));
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium;
+    background: linear-gradient(135deg, hsl(var(--healthcare-blue-light)) 0%, hsl(var(--primary) / 0.15) 100%);
     color: hsl(var(--healthcare-blue));
+    border: 1px solid hsl(var(--primary) / 0.2);
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
   }
 
   .healthcare-badge-accent {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-    background: hsl(var(--healthcare-orange-light));
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium;
+    background: linear-gradient(135deg, hsl(var(--healthcare-orange-light)) 0%, hsl(var(--accent) / 0.15) 100%);
     color: hsl(var(--accent));
+    border: 1px solid hsl(var(--accent) / 0.3);
+    box-shadow: 0 2px 8px hsl(var(--accent) / 0.15);
   }
 
   .healthcare-badge-success {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-    background: hsl(var(--healthcare-green-light));
+    @apply inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium;
+    background: linear-gradient(135deg, hsl(var(--healthcare-green-light)) 0%, hsl(var(--healthcare-green) / 0.15) 100%);
     color: hsl(var(--healthcare-green));
+    border: 1px solid hsl(var(--healthcare-green) / 0.3);
   }
 
   .healthcare-input {
     @apply w-full px-4 py-3 rounded-lg border border-input bg-background;
     @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .healthcare-input:hover {
+    border-color: hsl(var(--primary) / 0.4);
   }
 
   .animate-float {
@@ -196,6 +223,122 @@
 
   .animate-pulse-slow {
     animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--background)) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-md bg-card/80 border border-border/50;
+    box-shadow: 0 8px 32px hsl(var(--foreground) / 0.05);
+  }
+
+  .glow-effect {
+    position: relative;
+  }
+
+  .glow-effect::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.4), hsl(var(--accent) / 0.4));
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    filter: blur(12px);
+    transition: opacity 0.4s ease;
+  }
+
+  .glow-effect:hover::after {
+    opacity: 1;
+  }
+
+  .interactive-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .interactive-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .interactive-lift:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .gradient-border {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  .text-gradient-animated {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)),
+      hsl(var(--accent)),
+      hsl(var(--primary))
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 3s ease infinite;
+  }
+
+  .icon-bounce {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .icon-bounce:hover {
+    animation: icon-bounce 0.5s ease;
+  }
+
+  .ripple-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ripple-effect::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, hsl(var(--primary) / 0.3) 0%, transparent 70%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+
+  .ripple-effect:active::after {
+    transform: scale(2);
+    opacity: 1;
+    transition: transform 0s, opacity 0s;
   }
 }
 
@@ -211,5 +354,41 @@
   }
   50% {
     transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
+}
+
+@keyframes icon-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-4px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-2px);
   }
 }
