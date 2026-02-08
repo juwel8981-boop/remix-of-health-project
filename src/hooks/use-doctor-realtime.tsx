@@ -22,6 +22,14 @@ interface Appointment {
   };
 }
 
+interface Chamber {
+  id: string;
+  name: string;
+  address: string;
+  timing: string | null;
+  days: string[] | null;
+}
+
 interface UseDoctorRealtimeOptions {
   doctorId: string | null;
   onNewAppointment?: (appointment: Appointment) => void;
@@ -36,6 +44,7 @@ export function useDoctorRealtime({ doctorId, onNewAppointment, onAppointmentUpd
     reviewCount: 0,
   });
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [chambers, setChambers] = useState<Chamber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
@@ -127,11 +136,28 @@ export function useDoctorRealtime({ doctorId, onNewAppointment, onAppointmentUpd
     setIsLoading(false);
   }, [doctorId]);
 
+  const fetchChambers = useCallback(async () => {
+    if (!doctorId) return;
+
+    const { data, error } = await supabase
+      .from("doctor_chambers")
+      .select("id, name, address, timing, days")
+      .eq("doctor_id", doctorId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching chambers:", error);
+      return;
+    }
+
+    setChambers(data || []);
+  }, [doctorId]);
+
   const refresh = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchStats(), fetchTodayAppointments()]);
+    await Promise.all([fetchStats(), fetchTodayAppointments(), fetchChambers()]);
     setIsLoading(false);
-  }, [fetchStats, fetchTodayAppointments]);
+  }, [fetchStats, fetchTodayAppointments, fetchChambers]);
 
   // Initial fetch
   useEffect(() => {
@@ -222,6 +248,7 @@ export function useDoctorRealtime({ doctorId, onNewAppointment, onAppointmentUpd
   return {
     stats,
     todayAppointments,
+    chambers,
     isLoading,
     lastUpdated,
     refresh,
