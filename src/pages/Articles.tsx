@@ -1120,68 +1120,87 @@ export default function Articles() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
+                transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                className={`bg-card rounded-xl shadow-sm border overflow-hidden transition-all duration-300 hover:shadow-lg ${
+                  post.isDoctor 
+                    ? 'border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card ring-1 ring-primary/10' 
+                    : 'border-border hover:border-primary/20'
+                }`}
               >
                 {/* Post Header */}
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 group">
                       <div className="relative">
-                        <Avatar className="w-10 h-10">
+                        <Avatar className="w-10 h-10 ring-2 ring-transparent group-hover:ring-primary/20 transition-all duration-300">
                           <AvatarImage src={post.authorImage} />
-                          <AvatarFallback>{post.author[0]}</AvatarFallback>
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20">{post.author[0]}</AvatarFallback>
                         </Avatar>
                         {post.isDoctor && (
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-card">
+                          <motion.div 
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 500, delay: 0.2 }}
+                            className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center border-2 border-card shadow-lg"
+                          >
                             <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                          </div>
+                          </motion.div>
                         )}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className={`font-semibold ${post.isDoctor ? 'text-primary' : 'text-foreground'}`}>
+                          <h3 className={`font-semibold transition-colors duration-200 ${post.isDoctor ? 'text-primary hover:text-primary/80' : 'text-foreground hover:text-primary'} cursor-pointer`}>
                             {post.author}
                           </h3>
                           {post.isDoctor && (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            <motion.span 
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gradient-to-r from-primary/15 to-primary/10 text-primary border border-primary/20 shadow-sm"
+                            >
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
                               Verified Doctor
-                            </span>
+                            </motion.span>
                           )}
                           {post.feeling && (
-                            <span className="text-sm text-muted-foreground">is feeling {post.feeling}</span>
+                            <span className="text-sm text-muted-foreground animate-fade-in">is feeling {post.feeling}</span>
                           )}
                         </div>
                         {post.isDoctor ? (
-                          <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                            <span className="inline-flex items-center gap-1 text-primary font-medium">
-                              <Stethoscope className="w-3 h-3" />
+                          <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className="flex items-center gap-2 text-xs mt-1 flex-wrap"
+                          >
+                            <span className="inline-flex items-center gap-1.5 text-primary font-semibold bg-primary/10 px-2 py-1 rounded-md">
+                              <Stethoscope className="w-3.5 h-3.5" />
                               {post.doctorSpecialty || "Healthcare Professional"}
                             </span>
                             {post.doctorRegistration && (
-                              <span className="inline-flex items-center gap-1 text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">
-                                Reg: {post.doctorRegistration}
+                              <span className="inline-flex items-center gap-1 text-muted-foreground font-mono text-[10px] bg-muted/80 px-2 py-1 rounded border border-border">
+                                REG: {post.doctorRegistration}
                               </span>
                             )}
                             {post.doctorHospital && (
-                              <span className="inline-flex items-center gap-1 text-foreground/80">
-                                <Building2 className="w-3 h-3" />
+                              <span className="inline-flex items-center gap-1.5 text-foreground/80 bg-secondary/50 px-2 py-1 rounded-md">
+                                <Building2 className="w-3.5 h-3.5 text-primary/70" />
                                 {post.doctorHospital}
                               </span>
                             )}
-                            <span className="text-muted-foreground">•</span>
+                            <span className="text-muted-foreground/50">•</span>
                             <span className="text-muted-foreground">{post.time}</span>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className="inline-flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
                               <Globe className="w-3 h-3" />
                               {post.category}
                             </span>
-                          </div>
+                          </motion.div>
                         ) : (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                             <span>{post.authorRole}</span>
@@ -1231,74 +1250,103 @@ export default function Articles() {
 
                 {/* Post Images/Videos */}
                 {post.images.length > 0 && (
-                  <div className={`grid ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-0.5`}>
+                  <div className={`grid ${post.images.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-0.5 overflow-hidden`}>
                     {post.images.map((media, imgIndex) => (
                       media.includes(".mp4") || media.includes(".webm") || media.includes(".mov") ? (
                         <video key={imgIndex} src={media} controls className="w-full h-64 object-cover" />
                       ) : (
-                        <img key={imgIndex} src={media} alt={`Post image ${imgIndex + 1}`} className="w-full h-64 object-cover" />
+                        <motion.img 
+                          key={imgIndex} 
+                          src={media} 
+                          alt={`Post image ${imgIndex + 1}`} 
+                          className="w-full h-64 object-cover cursor-pointer"
+                          whileHover={{ scale: 1.02 }}
+                          transition={{ duration: 0.3 }}
+                        />
                       )
                     ))}
                   </div>
                 )}
 
                 {/* Engagement Stats - Reddit Style */}
-                <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp className={`w-4 h-4 ${post.reactions["like"] ? "text-primary" : ""}`} />
-                      <span>{post.reactions["like"] || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ThumbsDown className={`w-4 h-4 ${post.reactions["dislike"] ? "text-destructive" : ""}`} />
-                      <span>{post.reactions["dislike"] || 0}</span>
-                    </div>
+                <div className="px-4 py-2 flex items-center justify-between text-sm text-muted-foreground border-b border-border bg-muted/30">
+                  <div className="flex items-center gap-4">
+                    <motion.div 
+                      className="flex items-center gap-1.5"
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <ThumbsUp className={`w-4 h-4 transition-colors ${post.reactions["like"] ? "text-primary fill-primary/20" : ""}`} />
+                      <span className={`font-medium ${post.reactions["like"] ? "text-primary" : ""}`}>{post.reactions["like"] || 0}</span>
+                    </motion.div>
+                    <motion.div 
+                      className="flex items-center gap-1.5"
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <ThumbsDown className={`w-4 h-4 transition-colors ${post.reactions["dislike"] ? "text-destructive fill-destructive/20" : ""}`} />
+                      <span className={`font-medium ${post.reactions["dislike"] ? "text-destructive" : ""}`}>{post.reactions["dislike"] || 0}</span>
+                    </motion.div>
                   </div>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                      className="hover:underline"
+                      className="hover:text-primary hover:underline transition-colors font-medium"
                     >
                       {post.comments.length} comments
                     </button>
-                    <span>{post.shares} shares</span>
+                    <span className="text-muted-foreground/70">{post.shares} shares</span>
                   </div>
                 </div>
 
                 {/* Action Buttons - Reddit Style Like/Dislike */}
-                <div className="px-4 py-1 flex items-center justify-around border-b border-border">
-                  <Button
-                    variant="ghost"
-                    className={`flex-1 gap-2 ${post.reaction === "like" ? "text-primary" : "text-muted-foreground"}`}
-                    onClick={() => reactToPost(post.id, "like")}
-                  >
-                    <ThumbsUp className={`w-5 h-5 ${post.reaction === "like" ? "fill-current" : ""}`} />
-                    Like
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className={`flex-1 gap-2 ${post.reaction === "dislike" ? "text-destructive" : "text-muted-foreground"}`}
-                    onClick={() => reactToPost(post.id, "dislike")}
-                  >
-                    <ThumbsDown className={`w-5 h-5 ${post.reaction === "dislike" ? "fill-current" : ""}`} />
-                    Dislike
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex-1 gap-2 text-muted-foreground"
-                    onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Comment
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex-1 gap-2 text-muted-foreground"
-                    onClick={() => openShareDialog(post)}
-                  >
-                    <Repeat2 className="w-5 h-5" />
-                    Share
-                  </Button>
+                <div className="px-4 py-1.5 flex items-center justify-around border-b border-border bg-card">
+                  <motion.div className="flex-1" whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="ghost"
+                      className={`w-full gap-2 transition-all duration-200 ${
+                        post.reaction === "like" 
+                          ? "text-primary bg-primary/10 hover:bg-primary/20" 
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                      }`}
+                      onClick={() => reactToPost(post.id, "like")}
+                    >
+                      <ThumbsUp className={`w-5 h-5 transition-transform ${post.reaction === "like" ? "fill-current scale-110" : "hover:scale-110"}`} />
+                      Like
+                    </Button>
+                  </motion.div>
+                  <motion.div className="flex-1" whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="ghost"
+                      className={`w-full gap-2 transition-all duration-200 ${
+                        post.reaction === "dislike" 
+                          ? "text-destructive bg-destructive/10 hover:bg-destructive/20" 
+                          : "text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                      }`}
+                      onClick={() => reactToPost(post.id, "dislike")}
+                    >
+                      <ThumbsDown className={`w-5 h-5 transition-transform ${post.reaction === "dislike" ? "fill-current scale-110" : "hover:scale-110"}`} />
+                      Dislike
+                    </Button>
+                  </motion.div>
+                  <motion.div className="flex-1" whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="ghost"
+                      className="w-full gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                      onClick={() => setShowComments({ ...showComments, [post.id]: !showComments[post.id] })}
+                    >
+                      <MessageCircle className="w-5 h-5 hover:scale-110 transition-transform" />
+                      Comment
+                    </Button>
+                  </motion.div>
+                  <motion.div className="flex-1" whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="ghost"
+                      className="w-full gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                      onClick={() => openShareDialog(post)}
+                    >
+                      <Repeat2 className="w-5 h-5 hover:scale-110 transition-transform" />
+                      Share
+                    </Button>
+                  </motion.div>
                 </div>
 
                 {/* Comments Section */}
