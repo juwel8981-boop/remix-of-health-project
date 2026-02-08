@@ -82,6 +82,9 @@ interface Post {
   comments: Comment[];
   shares: number;
   feeling?: string;
+  isDoctor?: boolean;
+  doctorSpecialty?: string;
+  doctorHospital?: string;
   originalPost?: {
     id: string;
     author: string;
@@ -256,12 +259,16 @@ export default function Articles() {
       // Fetch all approved doctors to identify doctor authors
       const { data: doctorsData } = await supabase
         .from("doctors")
-        .select("user_id, full_name, specialization")
+        .select("user_id, full_name, specialization, hospital_affiliation")
         .eq("verification_status", "approved");
 
       const doctorUserIds = new Set((doctorsData || []).map(d => d.user_id));
       const doctorInfoMap = new Map(
-        (doctorsData || []).map(d => [d.user_id, { name: d.full_name, specialization: d.specialization }])
+        (doctorsData || []).map(d => [d.user_id, { 
+          name: d.full_name, 
+          specialization: d.specialization,
+          hospital: d.hospital_affiliation
+        }])
       );
 
       const { data: postsData, error } = await supabase
@@ -333,7 +340,9 @@ export default function Articles() {
             comments,
             feeling,
             originalPost,
-            isDoctor, // Add flag for sorting
+            isDoctor,
+            doctorSpecialty: doctorInfo?.specialization,
+            doctorHospital: doctorInfo?.hospital,
           };
         })
       );
@@ -1142,9 +1151,17 @@ export default function Articles() {
                             <span className="text-sm text-muted-foreground">is feeling {post.feeling}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {post.authorRole.includes("Verified Doctor") ? (
-                            <span className="text-primary/80">{post.authorRole.split("•")[1]?.trim() || "Healthcare Professional"}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                          {post.isDoctor ? (
+                            <>
+                              <span className="text-primary font-medium">{post.doctorSpecialty || "Healthcare Professional"}</span>
+                              {post.doctorHospital && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-foreground/70">{post.doctorHospital}</span>
+                                </>
+                              )}
+                            </>
                           ) : (
                             <span>{post.authorRole}</span>
                           )}
