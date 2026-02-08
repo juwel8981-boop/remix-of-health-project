@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PostSkeleton } from "@/components/post/PostSkeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -140,6 +141,7 @@ export default function Articles() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -257,6 +259,7 @@ export default function Articles() {
   };
 
   const fetchPosts = async () => {
+    setPostsLoading(true);
     try {
       // Fetch all approved doctors to identify doctor authors
       const { data: doctorsData } = await supabase
@@ -364,6 +367,8 @@ export default function Articles() {
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to load posts");
+    } finally {
+      setPostsLoading(false);
     }
   };
 
@@ -1106,11 +1111,7 @@ export default function Articles() {
             </motion.div>
           )}
 
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          )}
+          {postsLoading && <PostSkeleton count={4} />}
 
           {/* Posts Feed */}
           <AnimatePresence>
