@@ -13,7 +13,7 @@ const navLinks = [
   { name: "Find Doctors", href: "/doctors" },
   { name: "Healthcare Facilities", href: "/hospitals" },
   { name: "Verify Personnel", href: "/verify-doctor" },
-  { name: "Health Feed", href: "/health-feed" },
+  { name: "Medical Community", href: "/health-feed" },
 ];
 
 type UserRole = "patient" | "doctor" | "admin" | null;

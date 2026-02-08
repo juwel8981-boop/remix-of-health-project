@@ -114,7 +114,7 @@ export default function ArticleDetail() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Post Not Found</h1>
           <Button asChild variant="healthcare">
-            <Link to="/health-feed">Browse Health Feed</Link>
+            <Link to="/health-feed">Browse Medical Community</Link>
           </Button>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function ArticleDetail() {
           className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm text-foreground hover:bg-card transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Health Feed
+          Back to Medical Community
         </Link>
       </section>
 

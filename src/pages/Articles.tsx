@@ -918,7 +918,7 @@ export default function Articles() {
             className="text-center"
           >
             <h1 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-2">
-              Health Feed
+              Medical Community
             </h1>
             <p className="text-primary-foreground/80">
               Share health tips, ask questions, and connect with the community
