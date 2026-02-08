@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { 
   MessageCircle, Send, Image, X, MoreHorizontal,
   ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2,
@@ -85,6 +85,7 @@ interface Post {
   shares: number;
   feeling?: string;
   isDoctor?: boolean;
+  doctorId?: string;
   doctorSpecialty?: string;
   doctorHospital?: string;
   doctorRegistration?: string;
@@ -279,12 +280,13 @@ export default function Articles() {
       // Fetch all approved doctors to identify doctor authors
       const { data: doctorsData } = await supabase
         .from("doctors")
-        .select("user_id, full_name, specialization, hospital_affiliation, registration_number")
+        .select("id, user_id, full_name, specialization, hospital_affiliation, registration_number")
         .eq("verification_status", "approved");
 
       const doctorUserIds = new Set((doctorsData || []).map(d => d.user_id));
       const doctorInfoMap = new Map(
         (doctorsData || []).map(d => [d.user_id, { 
+          id: d.id,
           name: d.full_name, 
           specialization: d.specialization,
           hospital: d.hospital_affiliation,
@@ -362,6 +364,7 @@ export default function Articles() {
             feeling,
             originalPost,
             isDoctor,
+            doctorId: doctorInfo?.id,
             doctorSpecialty: doctorInfo?.specialization,
             doctorHospital: doctorInfo?.hospital,
             doctorRegistration: doctorInfo?.registration,
@@ -1168,9 +1171,18 @@ export default function Articles() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className={`font-semibold transition-colors duration-200 ${post.isDoctor ? 'text-primary hover:text-primary/80' : 'text-foreground hover:text-primary'} cursor-pointer`}>
-                            {post.author}
-                          </h3>
+                          {post.isDoctor && post.doctorId ? (
+                            <Link 
+                              to={`/doctor/${post.doctorId}`}
+                              className="font-semibold transition-colors duration-200 text-primary hover:text-primary/80 hover:underline"
+                            >
+                              {post.author}
+                            </Link>
+                          ) : (
+                            <h3 className="font-semibold transition-colors duration-200 text-foreground hover:text-primary cursor-pointer">
+                              {post.author}
+                            </h3>
+                          )}
                           {post.isDoctor && (
                             <motion.span 
                               initial={{ opacity: 0, x: -10 }}
