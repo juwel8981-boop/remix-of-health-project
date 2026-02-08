@@ -110,22 +110,29 @@ export function useDoctorRealtime({ doctorId, onNewAppointment, onAppointmentUpd
 
     if (error) {
       console.error("Error fetching appointments:", error);
+      setIsLoading(false);
       return;
     }
 
-    // Fetch patient details separately
+    // Fetch patient details from profiles table (publicly readable)
     if (data && data.length > 0) {
       const patientIds = [...new Set(data.map(a => a.patient_id))];
-      const { data: patients } = await supabase
-        .from("patients")
-        .select("user_id, full_name, date_of_birth")
-        .in("user_id", patientIds);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", patientIds);
 
-      const patientMap = new Map(patients?.map(p => [p.user_id, p]));
+      if (profilesError) {
+        console.error("Error fetching patient profiles:", profilesError);
+      }
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
       const appointmentsWithPatients = data.map(apt => ({
         ...apt,
-        patient: patientMap.get(apt.patient_id) || undefined
+        patient: profileMap.get(apt.patient_id) 
+          ? { full_name: profileMap.get(apt.patient_id)!.full_name, date_of_birth: null }
+          : undefined
       }));
 
       setTodayAppointments(appointmentsWithPatients);
