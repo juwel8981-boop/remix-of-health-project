@@ -125,16 +125,12 @@ export default function Index() {
     <div className="overflow-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-primary via-primary to-secondary overflow-hidden">
-        {/* Animated Background Pattern */}
+        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }} />
         </div>
-        
-        {/* Floating orbs for visual interest */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-accent/20 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary-foreground/10 rounded-full blur-3xl animate-float" />
 
         <div className="healthcare-container relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -145,91 +141,58 @@ export default function Index() {
               transition={{ duration: 0.6 }}
               className="text-center lg:text-left"
             >
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm mb-6 border border-primary-foreground/20"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-                </span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm mb-6">
+                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                 <span className="text-sm font-medium text-primary-foreground">Trusted by 1M+ users in Bangladesh</span>
-              </motion.div>
+              </div>
 
               <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6 leading-tight">
                 Your Health,{" "}
-                <span className="relative">
-                  <span className="text-accent">Our Priority</span>
-                  <motion.span 
-                    className="absolute -bottom-2 left-0 right-0 h-1 bg-accent/50 rounded-full"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ delay: 0.8, duration: 0.6 }}
-                  />
-                </span>
+                <span className="text-accent">Our Priority</span>
               </h1>
 
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-xl mx-auto lg:mx-0"
-              >
+              <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-xl mx-auto lg:mx-0">
                 Find verified doctors, hospitals, and diagnostic centers near you. Store your medical records securely and get AI-powered health recommendations.
-              </motion.p>
+              </p>
 
-              {/* Enhanced Search Box */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-card rounded-2xl p-2 shadow-healthcare-lg max-w-xl mx-auto lg:mx-0 border border-border/50"
-              >
+              {/* Search Box */}
+              <div className="bg-card rounded-2xl p-2 shadow-healthcare-lg max-w-xl mx-auto lg:mx-0">
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-muted group hover:bg-muted/80 transition-colors">
-                    <Search className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl bg-muted">
+                    <Search className="w-5 h-5 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Search doctors, hospitals..."
                       className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted sm:w-48 group hover:bg-muted/80 transition-colors">
-                    <MapPin className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted sm:w-48">
+                    <MapPin className="w-5 h-5 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Location"
                       className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
-                  <Button variant="accent" size="lg" className="sm:px-6 group relative overflow-hidden">
-                    <span className="relative z-10 flex items-center gap-2">
-                      <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                      <span className="sm:hidden md:inline">Search</span>
-                    </span>
+                  <Button variant="accent" size="lg" className="sm:px-6">
+                    <Search className="w-5 h-5" />
+                    <span className="sm:hidden md:inline">Search</span>
                   </Button>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Quick Links with hover effects */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="flex flex-wrap justify-center lg:justify-start gap-4 mt-6"
-              >
-                <Link to="/doctors" className="group text-sm text-primary-foreground/70 hover:text-primary-foreground transition-all flex items-center gap-1 hover:gap-2">
-                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /> Find Doctors
+              {/* Quick Links */}
+              <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-6">
+                <Link to="/doctors" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors flex items-center gap-1">
+                  <ChevronRight className="w-4 h-4" /> Find Doctors
                 </Link>
-                <Link to="/hospitals" className="group text-sm text-primary-foreground/70 hover:text-primary-foreground transition-all flex items-center gap-1 hover:gap-2">
-                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /> Nearby Hospitals
+                <Link to="/hospitals" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors flex items-center gap-1">
+                  <ChevronRight className="w-4 h-4" /> Nearby Hospitals
                 </Link>
-                <Link to="/verify-doctor" className="group text-sm text-primary-foreground/70 hover:text-primary-foreground transition-all flex items-center gap-1 hover:gap-2">
-                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" /> Verify Personnel
+                <Link to="/verify-doctor" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors flex items-center gap-1">
+                  <ChevronRight className="w-4 h-4" /> Verify Personnel
                 </Link>
-              </motion.div>
+              </div>
             </motion.div>
 
             {/* Right Image */}
@@ -292,11 +255,8 @@ export default function Index() {
       </section>
 
       {/* Stats Section */}
-      <section className="healthcare-section bg-background relative overflow-hidden">
-        {/* Subtle background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-        
-        <div className="healthcare-container relative z-10">
+      <section className="healthcare-section bg-background">
+        <div className="healthcare-container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
               <motion.div
@@ -305,14 +265,13 @@ export default function Index() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="text-center group cursor-pointer"
+                className="text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-300">
-                  <stat.icon className="w-8 h-8 text-primary group-hover:text-primary-foreground group-hover:scale-110 transition-all duration-300" />
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <stat.icon className="w-8 h-8 text-primary" />
                 </div>
-                <p className="text-3xl md:text-4xl font-bold font-display text-foreground mb-1 group-hover:text-primary transition-colors">{stat.value}</p>
-                <p className="text-muted-foreground group-hover:text-foreground transition-colors">{stat.label}</p>
+                <p className="text-3xl md:text-4xl font-bold font-display text-foreground mb-1">{stat.value}</p>
+                <p className="text-muted-foreground">{stat.label}</p>
               </motion.div>
             ))}
           </div>
@@ -345,19 +304,13 @@ export default function Index() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-                className="healthcare-card group cursor-pointer"
+                className="healthcare-card group"
               >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-4 group-hover:bg-gradient-to-br group-hover:from-primary group-hover:to-primary/80 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-300">
-                  <feature.icon className="w-7 h-7 text-primary group-hover:text-primary-foreground group-hover:scale-110 transition-all duration-300" />
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors">
+                  <feature.icon className="w-7 h-7 text-primary group-hover:text-primary-foreground transition-colors" />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
-                <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors">{feature.description}</p>
-                
-                {/* Hover indicator */}
-                <div className="mt-4 flex items-center gap-1 text-primary opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">
-                  Learn more <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <h3 className="font-display text-xl font-semibold text-foreground mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -365,11 +318,8 @@ export default function Index() {
       </section>
 
       {/* How It Works Section */}
-      <section className="healthcare-section bg-background relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none" />
-        
-        <div className="healthcare-container relative z-10">
+      <section className="healthcare-section bg-background">
+        <div className="healthcare-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -386,10 +336,8 @@ export default function Index() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Animated Connection Line */}
-            <div className="hidden md:block absolute top-16 left-1/4 right-1/4 h-1 rounded-full overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient-x" />
-            </div>
+            {/* Connection Line */}
+            <div className="hidden md:block absolute top-16 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary via-accent to-primary" />
 
             {howItWorks.map((item, index) => (
               <motion.div
@@ -398,14 +346,13 @@ export default function Index() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.2 }}
-                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="text-center relative group cursor-pointer"
+                className="text-center relative"
               >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground flex items-center justify-center mx-auto mb-6 text-2xl font-bold font-display shadow-healthcare-lg relative z-10 group-hover:shadow-xl group-hover:shadow-primary/30 group-hover:scale-110 transition-all duration-300">
+                <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-6 text-2xl font-bold font-display shadow-healthcare-lg relative z-10">
                   {item.step}
                 </div>
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
-                <p className="text-muted-foreground group-hover:text-foreground/80 transition-colors">{item.description}</p>
+                <h3 className="font-display text-xl font-semibold text-foreground mb-2">{item.title}</h3>
+                <p className="text-muted-foreground">{item.description}</p>
               </motion.div>
             ))}
           </div>
@@ -413,7 +360,7 @@ export default function Index() {
       </section>
 
       {/* Featured Doctors Section */}
-      <section className="healthcare-section bg-muted relative overflow-hidden">
+      <section className="healthcare-section bg-muted">
         <div className="healthcare-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
