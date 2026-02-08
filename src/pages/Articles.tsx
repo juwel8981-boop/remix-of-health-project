@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
   MessageCircle, Send, Image, X, MoreHorizontal,
-  ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2
+  ThumbsUp, ThumbsDown, Smile, Video, Globe, LogIn, Loader2, Repeat2, Edit2, Trash2,
+  Stethoscope, Building2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -1128,7 +1129,7 @@ export default function Articles() {
                           <AvatarImage src={post.authorImage} />
                           <AvatarFallback>{post.author[0]}</AvatarFallback>
                         </Avatar>
-                        {post.authorRole.includes("Verified Doctor") && (
+                        {post.isDoctor && (
                           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-card">
                             <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -1136,10 +1137,12 @@ export default function Articles() {
                           </div>
                         )}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-foreground">{post.author}</h3>
-                          {post.authorRole.includes("Verified Doctor") && (
+                          <h3 className={`font-semibold ${post.isDoctor ? 'text-primary' : 'text-foreground'}`}>
+                            {post.author}
+                          </h3>
+                          {post.isDoctor && (
                             <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -1151,26 +1154,36 @@ export default function Articles() {
                             <span className="text-sm text-muted-foreground">is feeling {post.feeling}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                          {post.isDoctor ? (
-                            <>
-                              <span className="text-primary font-medium">{post.doctorSpecialty || "Healthcare Professional"}</span>
-                              {post.doctorHospital && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-foreground/70">{post.doctorHospital}</span>
-                                </>
-                              )}
-                            </>
-                          ) : (
+                        {post.isDoctor ? (
+                          <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-primary font-medium">
+                              <Stethoscope className="w-3 h-3" />
+                              {post.doctorSpecialty || "Healthcare Professional"}
+                            </span>
+                            {post.doctorHospital && (
+                              <span className="inline-flex items-center gap-1 text-foreground/80">
+                                <Building2 className="w-3 h-3" />
+                                {post.doctorHospital}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">•</span>
+                            <span className="text-muted-foreground">{post.time}</span>
+                            <span className="text-muted-foreground">•</span>
+                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                              <Globe className="w-3 h-3" />
+                              {post.category}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                             <span>{post.authorRole}</span>
-                          )}
-                          <span>•</span>
-                          <span>{post.time}</span>
-                          <span>•</span>
-                          <Globe className="w-3 h-3" />
-                          <span>{post.category}</span>
-                        </div>
+                            <span>•</span>
+                            <span>{post.time}</span>
+                            <span>•</span>
+                            <Globe className="w-3 h-3" />
+                            <span>{post.category}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <DropdownMenu>
