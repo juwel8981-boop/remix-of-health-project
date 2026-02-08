@@ -86,6 +86,7 @@ interface Post {
   isDoctor?: boolean;
   doctorSpecialty?: string;
   doctorHospital?: string;
+  doctorRegistration?: string;
   originalPost?: {
     id: string;
     author: string;
@@ -260,7 +261,7 @@ export default function Articles() {
       // Fetch all approved doctors to identify doctor authors
       const { data: doctorsData } = await supabase
         .from("doctors")
-        .select("user_id, full_name, specialization, hospital_affiliation")
+        .select("user_id, full_name, specialization, hospital_affiliation, registration_number")
         .eq("verification_status", "approved");
 
       const doctorUserIds = new Set((doctorsData || []).map(d => d.user_id));
@@ -268,7 +269,8 @@ export default function Articles() {
         (doctorsData || []).map(d => [d.user_id, { 
           name: d.full_name, 
           specialization: d.specialization,
-          hospital: d.hospital_affiliation
+          hospital: d.hospital_affiliation,
+          registration: d.registration_number
         }])
       );
 
@@ -344,6 +346,7 @@ export default function Articles() {
             isDoctor,
             doctorSpecialty: doctorInfo?.specialization,
             doctorHospital: doctorInfo?.hospital,
+            doctorRegistration: doctorInfo?.registration,
           };
         })
       );
@@ -1160,6 +1163,11 @@ export default function Articles() {
                               <Stethoscope className="w-3 h-3" />
                               {post.doctorSpecialty || "Healthcare Professional"}
                             </span>
+                            {post.doctorRegistration && (
+                              <span className="inline-flex items-center gap-1 text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">
+                                Reg: {post.doctorRegistration}
+                              </span>
+                            )}
                             {post.doctorHospital && (
                               <span className="inline-flex items-center gap-1 text-foreground/80">
                                 <Building2 className="w-3 h-3" />
