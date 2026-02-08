@@ -22,6 +22,14 @@ interface Appointment {
   };
 }
 
+interface Chamber {
+  id: string;
+  name: string;
+  address: string;
+  timing: string | null;
+  days: string[] | null;
+}
+
 interface DoctorOverviewProps {
   doctorProfile: {
     full_name: string;
@@ -35,9 +43,11 @@ interface DoctorOverviewProps {
     reviewCount: number;
   };
   appointments?: Appointment[];
+  chambers?: Chamber[];
   isLoading?: boolean;
   lastUpdated?: Date;
   onRefresh?: () => void;
+  onManageChambers?: () => void;
 }
 
 function calculateAge(dateOfBirth: string | null): number | null {
@@ -81,12 +91,15 @@ export function DoctorOverview({
   doctorProfile, 
   stats, 
   appointments = [], 
+  chambers = [],
   isLoading = false,
   lastUpdated,
-  onRefresh 
+  onRefresh,
+  onManageChambers
 }: DoctorOverviewProps) {
   const firstName = doctorProfile?.full_name?.split(' ')[0] || "Doctor";
   const isApproved = doctorProfile?.verification_status === "approved";
+  const primaryChamber = chambers[0];
 
   const statsData = [
     { label: "Today's Appointments", value: stats.todayAppointments.toString(), icon: Calendar },
@@ -263,28 +276,63 @@ export function DoctorOverview({
             transition={{ delay: 0.3 }}
             className="healthcare-card"
           >
-            <h2 className="font-display text-lg font-semibold text-foreground mb-4">
-              Chamber Info
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-primary mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">Dhaka Medical College</p>
-                  <p className="text-sm text-muted-foreground">Secretariat Road, Dhaka</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-primary mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">Availability</p>
-                  <p className="text-sm text-muted-foreground">Mon-Fri, 9 AM - 5 PM</p>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                Chamber Info
+              </h2>
+              {chambers.length > 1 && (
+                <span className="text-xs text-muted-foreground">
+                  +{chambers.length - 1} more
+                </span>
+              )}
             </div>
-            <Button variant="outline" size="sm" className="w-full mt-4">
+            
+            {primaryChamber ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-primary mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">{primaryChamber.name}</p>
+                    <p className="text-sm text-muted-foreground">{primaryChamber.address}</p>
+                  </div>
+                </div>
+                {primaryChamber.timing && (
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Timing</p>
+                      <p className="text-sm text-muted-foreground">{primaryChamber.timing}</p>
+                    </div>
+                  </div>
+                )}
+                {primaryChamber.days && primaryChamber.days.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {primaryChamber.days.map((day) => (
+                      <span
+                        key={day}
+                        className="text-xs bg-muted px-2 py-0.5 rounded"
+                      >
+                        {day.slice(0, 3)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No chambers added yet</p>
+              </div>
+            )}
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mt-4"
+              onClick={onManageChambers}
+            >
               <Edit className="w-4 h-4 mr-2" />
-              Update Schedule
+              {primaryChamber ? "Manage Chambers" : "Add Chamber"}
             </Button>
           </motion.div>
 

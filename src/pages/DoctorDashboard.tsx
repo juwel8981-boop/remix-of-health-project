@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   User, Calendar, FileText, Settings, Users,
-  TrendingUp, CheckCircle2, Newspaper, Loader2
+  TrendingUp, CheckCircle2, Newspaper, Loader2, MapPin
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,15 +10,17 @@ import { DoctorVerificationBanner } from "@/components/doctor/DoctorVerification
 import { DoctorOverview } from "@/components/doctor/DoctorOverview";
 import { DoctorMyPatients } from "@/components/doctor/DoctorMyPatients";
 import { DoctorMyArticles } from "@/components/doctor/DoctorMyArticles";
+import { DoctorChamberManager } from "@/components/doctor/DoctorChamberManager";
 import { useDoctorRealtime } from "@/hooks/use-doctor-realtime";
 
-type TabType = "overview" | "my-patients" | "my-articles";
+type TabType = "overview" | "my-patients" | "my-articles" | "my-chambers";
 
 const sidebarLinks: { name: string; icon: typeof TrendingUp; tab: TabType | null; href?: string }[] = [
   { name: "Overview", icon: TrendingUp, tab: "overview" },
   { name: "My Profile", icon: User, tab: null, href: "/doctor/profile" },
   { name: "Appointments", icon: Calendar, tab: null, href: "/doctor/appointments" },
   { name: "My Patients", icon: Users, tab: "my-patients" },
+  { name: "My Chambers", icon: MapPin, tab: "my-chambers" },
   { name: "My Articles", icon: Newspaper, tab: "my-articles" },
   { name: "Medical Community", icon: FileText, tab: null, href: "/health-feed" },
   { name: "Settings", icon: Settings, tab: null, href: "/settings" },
@@ -43,12 +45,17 @@ export default function DoctorDashboard() {
   const { 
     stats, 
     todayAppointments, 
+    chambers,
     isLoading: realtimeLoading, 
     lastUpdated, 
     refresh 
   } = useDoctorRealtime({ 
     doctorId: doctorProfile?.id || null 
   });
+
+  const handleManageChambers = () => {
+    setActiveTab("my-chambers");
+  };
 
   useEffect(() => {
     const fetchDoctorData = async () => {
@@ -103,15 +110,19 @@ export default function DoctorDashboard() {
         return <DoctorMyPatients />;
       case "my-articles":
         return <DoctorMyArticles />;
+      case "my-chambers":
+        return <DoctorChamberManager />;
       default:
         return (
           <DoctorOverview 
             doctorProfile={doctorProfile} 
             stats={stats}
             appointments={todayAppointments}
+            chambers={chambers}
             isLoading={realtimeLoading}
             lastUpdated={lastUpdated}
             onRefresh={refresh}
+            onManageChambers={handleManageChambers}
           />
         );
     }
