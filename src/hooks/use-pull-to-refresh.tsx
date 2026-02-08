@@ -43,12 +43,20 @@ export function usePullToRefresh({
     }
   }, [isPulling, isRefreshing, maxPull]);
 
+  const triggerHapticFeedback = useCallback(() => {
+    // Use Vibration API if available
+    if ('vibrate' in navigator) {
+      navigator.vibrate(15); // Short 15ms vibration for subtle feedback
+    }
+  }, []);
+
   const handleTouchEnd = useCallback(async () => {
     if (!isPulling) return;
 
     setIsPulling(false);
 
     if (pullDistance >= threshold && !isRefreshing) {
+      triggerHapticFeedback();
       setIsRefreshing(true);
       setPullDistance(threshold * 0.6); // Show loading indicator
 
@@ -61,7 +69,7 @@ export function usePullToRefresh({
     } else {
       setPullDistance(0);
     }
-  }, [isPulling, pullDistance, threshold, isRefreshing, onRefresh]);
+  }, [isPulling, pullDistance, threshold, isRefreshing, onRefresh, triggerHapticFeedback]);
 
   useEffect(() => {
     const options = { passive: false };
