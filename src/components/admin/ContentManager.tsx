@@ -213,7 +213,7 @@ export default function ContentManager() {
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-foreground mb-1">Health Feed Management</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground mb-1">Medical Community Management</h1>
         <p className="text-muted-foreground">Moderate community health posts and discussions</p>
       </div>
 

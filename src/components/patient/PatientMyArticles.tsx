@@ -103,13 +103,13 @@ export function PatientMyArticles() {
         className="flex items-center justify-between"
       >
         <div>
-          <h2 className="font-display text-xl font-semibold text-foreground">My Health Feed Posts</h2>
-          <p className="text-muted-foreground">View and manage your contributions to the Health Feed</p>
+          <h2 className="font-display text-xl font-semibold text-foreground">My Medical Community Posts</h2>
+          <p className="text-muted-foreground">View and manage your contributions to the Medical Community</p>
         </div>
         <Button asChild>
           <Link to="/health-feed">
             <ExternalLink className="w-4 h-4 mr-2" />
-            Go to Health Feed
+            Go to Medical Community
           </Link>
         </Button>
       </motion.div>
@@ -226,7 +226,7 @@ export function PatientMyArticles() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Post?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your post and remove it from the Health Feed.
+              This action cannot be undone. This will permanently delete your post and remove it from the Medical Community.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

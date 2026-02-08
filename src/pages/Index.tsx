@@ -73,7 +73,7 @@ const features = [
   },
   {
     icon: Heart,
-    title: "Health Feed",
+    title: "Medical Community",
     description: "Stay informed with community health tips, questions, and expert insights from doctors.",
   },
 ];

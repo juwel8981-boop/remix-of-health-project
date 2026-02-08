@@ -289,7 +289,7 @@ export default function SettingsManager() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Require Post Approval</Label>
-                    <p className="text-sm text-muted-foreground">All health feed posts require admin approval</p>
+                    <p className="text-sm text-muted-foreground">All medical community posts require admin approval</p>
                   </div>
                   <Switch
                     checked={settings.find(s => s.key === "require_post_approval")?.value as boolean}
