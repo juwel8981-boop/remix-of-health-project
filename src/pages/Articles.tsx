@@ -11,6 +11,7 @@ import { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PostSkeleton } from "@/components/post/PostSkeleton";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -985,8 +986,9 @@ export default function Articles() {
       </section>
 
       {/* Main Content */}
-      <div className="healthcare-container py-6">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <PullToRefresh onRefresh={fetchPosts}>
+        <div className="healthcare-container py-6">
+          <div className="max-w-2xl mx-auto space-y-4">
           {/* Create Post Card */}
           {isAuthenticated ? (
             <motion.div
@@ -1571,8 +1573,9 @@ export default function Articles() {
               <p className="text-muted-foreground">No posts in this category yet. Be the first to share!</p>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      </PullToRefresh>
 
       {/* Floating Scroll to Top Button */}
       <AnimatePresence>
