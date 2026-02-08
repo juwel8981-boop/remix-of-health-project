@@ -59,6 +59,7 @@ const App = () => (
             <Route path="/ai-doctor-finder" element={<AIDoctorFinder />} />
             {/* Protected Dashboard Routes with Role-Based Access */}
             <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
+            <Route path="/patient/dashboard" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
             <Route path="/patient/ehr" element={<ProtectedRoute requiredRole="patient"><PatientEHR /></ProtectedRoute>} />
             <Route path="/patient/book-appointment" element={<ProtectedRoute requiredRole="patient"><BookAppointment /></ProtectedRoute>} />
             <Route path="/patient/appointments" element={<ProtectedRoute requiredRole="patient"><PatientAppointments /></ProtectedRoute>} />
