@@ -19,7 +19,7 @@ const sidebarLinks: { name: string; icon: typeof TrendingUp; tab: TabType | null
   { name: "Appointments", icon: Calendar, tab: null, href: "/doctor/appointments" },
   { name: "My Patients", icon: Users, tab: "my-patients" },
   { name: "My Articles", icon: Newspaper, tab: "my-articles" },
-  { name: "Health Feed", icon: FileText, tab: null, href: "/health-feed" },
+  { name: "Medical Community", icon: FileText, tab: null, href: "/health-feed" },
   { name: "Settings", icon: Settings, tab: null, href: "/settings" },
 ];
 
