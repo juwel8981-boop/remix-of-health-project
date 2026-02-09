@@ -1208,18 +1208,18 @@ export default function Articles() {
                             transition={{ delay: 0.1 }}
                             className="flex items-center gap-2 text-xs mt-1 flex-wrap"
                           >
-                            <span className="inline-flex items-center gap-1.5 text-primary font-semibold bg-primary/10 px-2 py-1 rounded-md">
+                            <span className="inline-flex items-center gap-1.5 text-primary/80 font-medium bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
                               <Stethoscope className="w-3.5 h-3.5" />
                               {post.doctorSpecialty || "Healthcare Professional"}
                             </span>
                             {post.doctorRegistration && (
-                              <span className="inline-flex items-center gap-1 text-muted-foreground font-mono text-[10px] bg-muted/80 px-2 py-1 rounded border border-border">
+                              <span className="inline-flex items-center gap-1 text-muted-foreground/70 font-mono text-[10px] bg-muted/40 px-2 py-1 rounded border border-border/50">
                                 REG: {post.doctorRegistration}
                               </span>
                             )}
                             {post.doctorHospital && (
-                              <span className="inline-flex items-center gap-1.5 text-foreground/80 bg-secondary/50 px-2 py-1 rounded-md">
-                                <Building2 className="w-3.5 h-3.5 text-primary/70" />
+                              <span className="inline-flex items-center gap-1.5 text-primary/70 font-medium bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
+                                <Building2 className="w-3.5 h-3.5" />
                                 {post.doctorHospital}
                               </span>
                             )}
