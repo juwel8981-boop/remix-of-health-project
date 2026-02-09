@@ -1213,7 +1213,7 @@ export default function Articles() {
                               {post.doctorSpecialty || "Healthcare Professional"}
                             </span>
                             {post.doctorRegistration && (
-                              <span className="inline-flex items-center gap-1 text-muted-foreground/70 font-mono text-[10px] bg-muted/40 px-2 py-1 rounded border border-border/50">
+                              <span className="inline-flex items-center gap-1 text-muted-foreground/50 font-mono text-[10px] bg-muted/20 px-2 py-1 rounded border border-border/30">
                                 REG: {post.doctorRegistration}
                               </span>
                             )}
