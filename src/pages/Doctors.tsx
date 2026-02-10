@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import AdminDoctorControls from "@/components/admin/AdminDoctorControls";
 import { DoctorCardSkeleton } from "@/components/skeletons/DoctorCardSkeleton";
+import { devDelay } from "@/lib/dev-delay";
 
 interface Doctor {
   id: string;
@@ -112,6 +113,7 @@ export default function Doctors() {
   // Fetch doctors function (moved outside useEffect so it can be called from AdminDoctorControls)
   const fetchDoctors = async () => {
     setLoading(true);
+    await devDelay();
     const { data, error } = await supabase
       .from("doctors")
       .select("id, full_name, email, registration_number, specialization, hospital_affiliation, experience_years, phone, verification_status, is_active, is_featured, featured_rank")
