@@ -5,6 +5,7 @@ import {
   TrendingUp, CheckCircle2, Newspaper, MapPin
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { devDelay } from "@/lib/dev-delay";
 import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DoctorVerificationBanner } from "@/components/doctor/DoctorVerificationBanner";
@@ -60,6 +61,7 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     const fetchDoctorData = async () => {
+      await devDelay();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
