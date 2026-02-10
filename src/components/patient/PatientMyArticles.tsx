@@ -169,7 +169,7 @@ export function PatientMyArticles() {
                 <div className="flex gap-4">
                   {post.image_url && (
                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                      <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+                      <img src={post.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

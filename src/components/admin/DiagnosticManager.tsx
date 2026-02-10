@@ -311,6 +311,7 @@ export default function DiagnosticManager() {
                 src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800"}
                 alt={diagnostic.name}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
               <span
                 className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium ${
