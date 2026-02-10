@@ -223,7 +223,7 @@ export default function AdminDashboard() {
 
           {/* Quick Stats Summary Row - always visible */}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border">
+            <button onClick={() => setActiveTab("doctors")} className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border hover:border-primary/40 transition-colors cursor-pointer text-left">
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Stethoscope className="w-4 h-4 text-primary" />
               </div>
@@ -231,8 +231,8 @@ export default function AdminDashboard() {
                 <p className="text-lg font-bold text-foreground leading-none">{stats.totalDoctors}</p>
                 <p className="text-xs text-muted-foreground">Doctors</p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border">
+            </button>
+            <button onClick={() => setActiveTab("overview")} className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border hover:border-secondary/40 transition-colors cursor-pointer text-left">
               <div className="w-9 h-9 rounded-lg bg-secondary/10 flex items-center justify-center">
                 <Users className="w-4 h-4 text-secondary" />
               </div>
@@ -240,8 +240,8 @@ export default function AdminDashboard() {
                 <p className="text-lg font-bold text-foreground leading-none">{stats.totalPatients}</p>
                 <p className="text-xs text-muted-foreground">Patients</p>
               </div>
-            </div>
-            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-amber-300/50">
+            </button>
+            <button onClick={() => setActiveTab("doctors")} className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-amber-300/50 hover:border-amber-400 transition-colors cursor-pointer text-left">
               <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
                 <Stethoscope className="w-4 h-4 text-amber-500" />
               </div>
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
                 <p className="text-lg font-bold text-foreground leading-none">{stats.pendingDoctors}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Overview Tab */}
