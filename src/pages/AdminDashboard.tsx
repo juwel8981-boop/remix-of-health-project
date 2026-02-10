@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, LogOut, MessageSquare, Star, Bell
+  Settings, LogOut, MessageSquare, Star, Bell, Sun, Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTheme } from "next-themes";
 import DoctorManager from "@/components/admin/DoctorManager";
 import HospitalManager from "@/components/admin/HospitalManager";
 import DiagnosticManager from "@/components/admin/DiagnosticManager";
@@ -46,6 +47,7 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("overview");
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,7 +213,15 @@ export default function AdminDashboard() {
             </ul>
           </nav>
 
-          <div className="p-4 border-t border-background/10">
+          <div className="p-4 border-t border-background/10 space-y-1">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-background/70 hover:text-background hover:bg-background/10"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5 mr-3" /> : <Moon className="w-5 h-5 mr-3" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </Button>
             <Button 
               variant="ghost" 
               className="w-full justify-start text-background/70 hover:text-background hover:bg-background/10"
