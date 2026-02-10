@@ -113,7 +113,7 @@ export default function Doctors() {
     setLoading(true);
     const { data, error } = await supabase
       .from("doctors")
-      .select("*")
+      .select("id, full_name, email, registration_number, specialization, hospital_affiliation, experience_years, phone, verification_status, is_active, is_featured, featured_rank")
       .order("is_featured", { ascending: false })
       .order("featured_rank", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });

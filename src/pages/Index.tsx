@@ -208,6 +208,8 @@ export default function Index() {
                   src={heroImage}
                   alt="Healthcare professionals providing quality care"
                   className="relative rounded-3xl shadow-2xl"
+                  loading="eager"
+                  fetchPriority="high"
                 />
 
                 {/* Floating Stats Card */}
@@ -399,6 +401,7 @@ export default function Index() {
                       src={doctor.image}
                       alt={doctor.name}
                       className="w-20 h-20 rounded-xl object-cover"
+                      loading="lazy"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -467,6 +470,7 @@ export default function Index() {
                     src={testimonial.image}
                     alt={testimonial.name}
                     className="w-12 h-12 rounded-full object-cover"
+                    loading="lazy"
                   />
                   <div>
                     <p className="font-semibold text-foreground">{testimonial.name}</p>
