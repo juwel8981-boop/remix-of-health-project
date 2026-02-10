@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import AdminDoctorControls from "@/components/admin/AdminDoctorControls";
 import { DoctorCardSkeleton } from "@/components/skeletons/DoctorCardSkeleton";
+import { BlurImage } from "@/components/ui/blur-image";
 
 
 interface Doctor {
@@ -503,11 +504,10 @@ export default function Doctors() {
                       
                       <Link to={`/doctors/${doctor.id}`} className="block healthcare-card hover:shadow-healthcare-lg transition-shadow">
                         <div className="flex flex-col sm:flex-row gap-4">
-                          <img
+                          <BlurImage
                             src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face"
                             alt={doctor.full_name}
-                            loading="lazy"
-                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover mx-auto sm:mx-0"
+                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl mx-auto sm:mx-0"
                           />
                           <div className="flex-1 text-center sm:text-left">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">

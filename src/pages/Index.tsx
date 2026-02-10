@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Search, MapPin, ArrowRight, Users, Building2, Stethoscope, CheckCircle2, Star, Shield, Clock, Heart, Activity, FileText, Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-healthcare.jpg";
+import { BlurImage } from "@/components/ui/blur-image";
 
 // Mock data for featured doctors
 const featuredDoctors = [
@@ -396,11 +397,10 @@ export default function Index() {
               >
                 <Link to={`/doctors/${doctor.id}`} className="block healthcare-card">
                   <div className="flex items-start gap-4">
-                    <img
+                    <BlurImage
                       src={doctor.image}
                       alt={doctor.name}
-                      className="w-20 h-20 rounded-xl object-cover"
-                      loading="lazy"
+                      className="w-20 h-20 rounded-xl"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -465,11 +465,10 @@ export default function Index() {
                 </div>
                 <p className="text-foreground mb-6 leading-relaxed">"{testimonial.content}"</p>
                 <div className="flex items-center gap-3">
-                  <img
+                  <BlurImage
                     src={testimonial.image}
                     alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                    loading="lazy"
+                    className="w-12 h-12 rounded-full"
                   />
                   <div>
                     <p className="font-semibold text-foreground">{testimonial.name}</p>
