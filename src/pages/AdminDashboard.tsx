@@ -4,9 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, LogOut, MessageSquare, Star
+  Settings, LogOut, MessageSquare, Star, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import DoctorManager from "@/components/admin/DoctorManager";
 import HospitalManager from "@/components/admin/HospitalManager";
 import DiagnosticManager from "@/components/admin/DiagnosticManager";
@@ -37,6 +39,8 @@ interface DashboardStats {
   totalPatients: number;
   totalPosts: number;
   approvedPosts: number;
+  pendingPosts: number;
+  pendingComments: number;
 }
 
 export default function AdminDashboard() {
@@ -53,6 +57,8 @@ export default function AdminDashboard() {
     totalPatients: 0,
     totalPosts: 0,
     approvedPosts: 0,
+    pendingPosts: 0,
+    pendingComments: 0,
   });
 
   useEffect(() => {
@@ -80,6 +86,8 @@ export default function AdminDashboard() {
         { count: totalPatients },
         { count: totalPosts },
         { count: approvedPosts },
+        { count: pendingPosts },
+        { count: pendingComments },
       ] = await Promise.all([
         supabase.from("doctors").select("*", { count: "exact", head: true }),
         supabase.from("doctors").select("*", { count: "exact", head: true }).eq("verification_status", "approved"),
@@ -87,6 +95,8 @@ export default function AdminDashboard() {
         supabase.from("patients").select("*", { count: "exact", head: true }),
         supabase.from("health_posts").select("*", { count: "exact", head: true }),
         supabase.from("health_posts").select("*", { count: "exact", head: true }).eq("status", "approved"),
+        supabase.from("health_posts").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("post_comments").select("*", { count: "exact", head: true }).eq("status", "pending"),
       ]);
 
       setStats({
@@ -96,6 +106,8 @@ export default function AdminDashboard() {
         totalPatients: totalPatients || 0,
         totalPosts: totalPosts || 0,
         approvedPosts: approvedPosts || 0,
+        pendingPosts: pendingPosts || 0,
+        pendingComments: pendingComments || 0,
       });
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -261,6 +273,52 @@ export default function AdminDashboard() {
               </div>
             </button>
             </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab("doctors")}
+                    className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <Bell className="w-5 h-5 text-muted-foreground" />
+                    {(stats.pendingDoctors + stats.pendingPosts + stats.pendingComments) > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center" variant="destructive">
+                        {stats.pendingDoctors + stats.pendingPosts + stats.pendingComments}
+                      </Badge>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="w-56 p-0">
+                  <div className="p-3 space-y-2">
+                    <p className="text-xs font-semibold text-foreground mb-2">Pending Actions</p>
+                    <button onClick={() => setActiveTab("doctors")} className="flex items-center justify-between w-full text-xs hover:bg-muted rounded px-2 py-1.5 transition-colors">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Stethoscope className="w-3.5 h-3.5" /> Doctor verifications
+                      </span>
+                      <Badge variant={stats.pendingDoctors > 0 ? "destructive" : "secondary"} className="text-[10px] h-4 px-1.5">
+                        {stats.pendingDoctors}
+                      </Badge>
+                    </button>
+                    <button onClick={() => setActiveTab("content")} className="flex items-center justify-between w-full text-xs hover:bg-muted rounded px-2 py-1.5 transition-colors">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <FileText className="w-3.5 h-3.5" /> Post reviews
+                      </span>
+                      <Badge variant={stats.pendingPosts > 0 ? "destructive" : "secondary"} className="text-[10px] h-4 px-1.5">
+                        {stats.pendingPosts}
+                      </Badge>
+                    </button>
+                    <button onClick={() => setActiveTab("comments")} className="flex items-center justify-between w-full text-xs hover:bg-muted rounded px-2 py-1.5 transition-colors">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <MessageSquare className="w-3.5 h-3.5" /> Comment moderation
+                      </span>
+                      <Badge variant={stats.pendingComments > 0 ? "destructive" : "secondary"} className="text-[10px] h-4 px-1.5">
+                        {stats.pendingComments}
+                      </Badge>
+                    </button>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <div className="flex flex-col items-center gap-1 pl-2">
               <span className="relative flex h-3 w-3">
                 {isRealtimeConnected && (
