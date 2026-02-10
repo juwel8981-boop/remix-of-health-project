@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DiagnosticDetailSkeleton } from "@/components/skeletons/DiagnosticDetailSkeleton";
 
 interface ServiceWithPrice {
   name: string;
@@ -188,11 +189,7 @@ export default function DiagnosticDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <DiagnosticDetailSkeleton />;
   }
 
   if (!diagnostic) {
