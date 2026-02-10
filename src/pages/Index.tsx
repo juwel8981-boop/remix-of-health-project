@@ -1,43 +1,13 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, MapPin, ArrowRight, Users, Building2, Stethoscope, CheckCircle2, Star, Shield, Clock, Heart, Activity, FileText, Bell, ChevronRight } from "lucide-react";
+import { Search, MapPin, ArrowRight, Users, Building2, Stethoscope, CheckCircle2, Star, Shield, Heart, Activity, FileText, Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-healthcare.jpg";
 import { BlurImage } from "@/components/ui/blur-image";
+import { supabase } from "@/integrations/supabase/client";
+import { FeaturedDoctorsSkeleton, TestimonialsSkeleton } from "@/components/skeletons/HomeSkeleton";
 
-// Mock data for featured doctors
-const featuredDoctors = [
-  {
-    id: 1,
-    name: "Dr. Sarah Ahmed",
-    specialty: "Cardiologist",
-    hospital: "Dhaka Medical College",
-    rating: 4.9,
-    reviews: 124,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 2,
-    name: "Dr. Mohammad Rahman",
-    specialty: "Neurologist",
-    hospital: "Square Hospital",
-    rating: 4.8,
-    reviews: 98,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face",
-  },
-  {
-    id: 3,
-    name: "Dr. Fatima Khan",
-    specialty: "Pediatrician",
-    hospital: "Apollo Hospital",
-    rating: 4.9,
-    reviews: 156,
-    verified: true,
-    image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop&crop=face",
-  },
-];
 
 const stats = [
   { value: "10,000+", label: "Verified Doctors", icon: Stethoscope },
@@ -121,7 +91,36 @@ const testimonials = [
   },
 ];
 
+interface FeaturedDoctor {
+  id: string;
+  full_name: string;
+  specialization: string;
+  hospital_affiliation: string | null;
+}
+
 export default function Index() {
+  const [featuredDoctors, setFeaturedDoctors] = useState<FeaturedDoctor[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      const { data, error } = await supabase
+        .from("doctors")
+        .select("id, full_name, specialization, hospital_affiliation")
+        .eq("verification_status", "approved")
+        .eq("is_active", true)
+        .eq("is_featured", true)
+        .order("featured_rank", { ascending: true })
+        .limit(3);
+
+      if (!error && data) {
+        setFeaturedDoctors(data);
+      }
+      setLoadingDoctors(false);
+    };
+    fetchFeatured();
+  }, []);
+
   return (
     <div className="overflow-hidden">
       {/* Hero Section */}
@@ -386,47 +385,49 @@ export default function Index() {
             </Button>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredDoctors.map((doctor, index) => (
-              <motion.div
-                key={doctor.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <Link to={`/doctors/${doctor.id}`} className="block healthcare-card">
-                  <div className="flex items-start gap-4">
-                    <BlurImage
-                      src={doctor.image}
-                      alt={doctor.name}
-                      className="w-20 h-20 rounded-xl"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-display font-semibold text-foreground truncate">{doctor.name}</h3>
-                        {doctor.verified && (
+          {loadingDoctors ? (
+            <FeaturedDoctorsSkeleton />
+          ) : featuredDoctors.length === 0 ? (
+            <div className="text-center py-12">
+              <Stethoscope className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No featured doctors available right now.</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredDoctors.map((doctor, index) => (
+                <motion.div
+                  key={doctor.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                >
+                  <Link to={`/doctors/${doctor.id}`} className="block healthcare-card">
+                    <div className="flex items-start gap-4">
+                      <BlurImage
+                        src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face"
+                        alt={doctor.full_name}
+                        className="w-20 h-20 rounded-xl"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-display font-semibold text-foreground truncate">{doctor.full_name}</h3>
                           <CheckCircle2 className="w-4 h-4 text-healthcare-green flex-shrink-0" />
-                        )}
+                        </div>
+                        <p className="text-sm text-primary font-medium mb-1">{doctor.specialization}</p>
+                        <p className="text-sm text-muted-foreground truncate">{doctor.hospital_affiliation || "Independent"}</p>
                       </div>
-                      <p className="text-sm text-primary font-medium mb-1">{doctor.specialty}</p>
-                      <p className="text-sm text-muted-foreground truncate">{doctor.hospital}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-accent fill-accent" />
-                      <span className="font-semibold text-foreground">{doctor.rating}</span>
-                      <span className="text-sm text-muted-foreground">({doctor.reviews} reviews)</span>
+                    <div className="flex items-center justify-end mt-4 pt-4 border-t border-border">
+                      <Button variant="ghost" size="sm">
+                        View Profile
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      View Profile
-                    </Button>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
