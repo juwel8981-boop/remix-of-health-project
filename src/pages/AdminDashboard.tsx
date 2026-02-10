@@ -45,6 +45,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalDoctors: 0,
     approvedDoctors: 0,
@@ -132,7 +133,9 @@ export default function AdminDashboard() {
           fetchStats();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -239,7 +242,8 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Stats Summary Row - always visible */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 flex-1">
             <button onClick={() => setActiveTab("doctors")} className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border hover:border-primary/40 transition-colors cursor-pointer text-left">
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Stethoscope className="w-4 h-4 text-primary" />
@@ -267,6 +271,18 @@ export default function AdminDashboard() {
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
             </button>
+            </div>
+            <div className="flex flex-col items-center gap-1 pl-2">
+              <span className="relative flex h-3 w-3">
+                {isRealtimeConnected && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isRealtimeConnected ? 'bg-green-500' : 'bg-muted-foreground/40'}`}></span>
+              </span>
+              <span className={`text-[10px] font-medium ${isRealtimeConnected ? 'text-green-600' : 'text-muted-foreground'}`}>
+                {isRealtimeConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
           </div>
 
           {/* Overview Tab */}
