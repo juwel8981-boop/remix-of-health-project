@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Sun, Moon } from "lucide-react";
+import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -197,11 +197,11 @@ export function Navbar() {
           {/* CTA Buttons - Always visible on desktop */}
           <div className="hidden md:flex items-center gap-3">
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : theme === "system" ? <Monitor className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             {user ? (
               <div className="relative">
@@ -322,10 +322,10 @@ export function Navbar() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
                   >
-                    {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                    {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : theme === "system" ? <Monitor className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+                    {theme === "dark" ? "Light Mode" : theme === "system" ? "System Theme" : "Dark Mode"}
                   </Button>
                   {user ? (
                     <>
