@@ -342,6 +342,7 @@ export default function Hospitals() {
                             <img
                               src={hospital.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop"}
                               alt={hospital.name}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                             <span className="absolute top-4 right-4 bg-healthcare-green text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
@@ -426,6 +427,7 @@ export default function Hospitals() {
                             <img
                               src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop"}
                               alt={diagnostic.name}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           </div>

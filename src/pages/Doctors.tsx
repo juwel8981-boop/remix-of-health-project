@@ -506,6 +506,7 @@ export default function Doctors() {
                           <img
                             src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop&crop=face"
                             alt={doctor.full_name}
+                            loading="lazy"
                             className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover mx-auto sm:mx-0"
                           />
                           <div className="flex-1 text-center sm:text-left">
