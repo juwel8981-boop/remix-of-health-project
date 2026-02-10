@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { motion } from "framer-motion";
 import { 
   Users, Search, Calendar, Phone, Mail, MapPin, 
@@ -182,11 +183,7 @@ export default function DoctorPatients() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

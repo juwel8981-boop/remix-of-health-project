@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AppointmentsSkeleton } from "@/components/skeletons/AppointmentsSkeleton";
 import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,11 +149,7 @@ export default function PatientAppointments() {
   );
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AppointmentsSkeleton />;
   }
 
   const AppointmentCard = ({ appointment }: { appointment: Appointment }) => {
