@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BookAppointmentSkeleton } from "@/components/skeletons/BookAppointmentSkeleton";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,11 +139,7 @@ export default function BookAppointment() {
   const selectedDoctorData = doctors.find(d => d.id === selectedDoctor);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <BookAppointmentSkeleton />;
   }
 
   if (success) {

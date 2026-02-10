@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { EHRSkeleton } from "@/components/skeletons/EHRSkeleton";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -174,11 +175,7 @@ export default function PatientEHR() {
   const storagePercentage = (totalStorageUsed / MAX_STORAGE) * 100;
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <EHRSkeleton />;
   }
 
   return (
