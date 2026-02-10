@@ -7,6 +7,7 @@ import { FacilitiesMap } from "@/components/FacilitiesMap";
 import { supabase } from "@/integrations/supabase/client";
 import { HospitalCardSkeleton } from "@/components/skeletons/HospitalCardSkeleton";
 import { DiagnosticCardSkeleton } from "@/components/skeletons/DiagnosticCardSkeleton";
+import { BlurImage } from "@/components/ui/blur-image";
 
 
 interface Hospital {
@@ -339,11 +340,10 @@ export default function Hospitals() {
                           onClick={() => navigate(`/hospitals/${hospital.id}`)}
                         >
                           <div className="relative h-48 -m-6 mb-4">
-                            <img
+                            <BlurImage
                               src={hospital.image_url || "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=600&h=400&fit=crop"}
                               alt={hospital.name}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
+                              className="h-full w-full"
                             />
                             <span className="absolute top-4 right-4 bg-healthcare-green text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
                               24/7 Emergency
@@ -424,11 +424,10 @@ export default function Hospitals() {
                           onClick={() => navigate(`/diagnostics/${diagnostic.id}`)}
                         >
                           <div className="relative h-40 -m-6 mb-4">
-                            <img
+                            <BlurImage
                               src={diagnostic.image_url || "https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=400&fit=crop"}
                               alt={diagnostic.name}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
+                              className="h-full w-full"
                             />
                           </div>
 
