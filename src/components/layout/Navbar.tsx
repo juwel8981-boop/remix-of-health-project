@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Sun, Moon, Monitor } from "lucide-react";
@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
+import { useAuthUser } from "@/hooks/use-auth-user";
 
 const navLinks = [
   { name: "Find Doctors", href: "/doctors" },
@@ -17,100 +17,15 @@ const navLinks = [
   { name: "Medical Community", href: "/health-feed" },
 ];
 
-type UserRole = "patient" | "doctor" | "admin" | null;
-
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>(null);
+  const { user, avatarUrl, userName, userRole } = useAuthUser();
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchUserProfile(session.user.id);
-          fetchUserRole(session.user.id);
-        } else {
-          setAvatarUrl(null);
-          setUserName(null);
-          setUserRole(null);
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-        fetchUserRole(session.user.id);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserProfile = async (userId: string) => {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("avatar_url, full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    
-    if (profile) {
-      setAvatarUrl(profile.avatar_url);
-      setUserName(profile.full_name);
-    }
-  };
-
-  const fetchUserRole = async (userId: string) => {
-    // Check if user is admin
-    const { data: adminRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    
-    if (adminRole) {
-      setUserRole("admin");
-      return;
-    }
-
-    // Check if user is a doctor
-    const { data: doctorData } = await supabase
-      .from("doctors")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (doctorData) {
-      setUserRole("doctor");
-      return;
-    }
-
-    // Check if user is a patient
-    const { data: patientData } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (patientData) {
-      setUserRole("patient");
-      return;
-    }
-
-    setUserRole(null);
-  };
-
-  const getDashboardLink = () => {
+  const dashboardLink = useMemo(() => {
     switch (userRole) {
       case "admin":
         return { name: "Admin Panel", href: "/admin", icon: Shield };
@@ -121,16 +36,16 @@ export function Navbar() {
       default:
         return null;
     }
-  };
+  }, [userRole]);
 
-  const getInitials = () => {
+  const initials = useMemo(() => {
     if (userName) {
       return userName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
     }
     return user?.email?.charAt(0).toUpperCase() || "U";
-  };
+  }, [userName, user?.email]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Failed to log out");
@@ -139,9 +54,14 @@ export function Navbar() {
       setShowUserMenu(false);
       navigate("/");
     }
-  };
+  }, [navigate]);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
+
+  const toggleMenu = useCallback(() => setIsOpen(prev => !prev), []);
+  const toggleUserMenu = useCallback(() => setShowUserMenu(prev => !prev), []);
+  const closeMenu = useCallback(() => setIsOpen(false), []);
+  const closeUserMenu = useCallback(() => setShowUserMenu(false), []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -174,22 +94,18 @@ export function Navbar() {
               </Link>
             ))}
 
-            {/* Dashboard Link - Only show when logged in and has role */}
-            {user && userRole && getDashboardLink() && (
+            {user && userRole && dashboardLink && (
               <Link
-                to={getDashboardLink()!.href}
+                to={dashboardLink.href}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isActive(getDashboardLink()!.href)
+                  isActive(dashboardLink.href)
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
-                {(() => {
-                  const link = getDashboardLink()!;
-                  return <link.icon className="w-4 h-4" />;
-                })()}
-                {getDashboardLink()!.name}
+                <dashboardLink.icon className="w-4 h-4" />
+                {dashboardLink.name}
               </Link>
             )}
           </div>
@@ -222,13 +138,13 @@ export function Navbar() {
             {user ? (
               <div className="relative">
                 <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  onClick={toggleUserMenu}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={avatarUrl || undefined} alt="Profile" />
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {getInitials()}
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <span className="max-w-[120px] truncate">{userName || user.email?.split('@')[0]}</span>
@@ -248,7 +164,7 @@ export function Navbar() {
                       </div>
                       <Link
                         to="/settings"
-                        onClick={() => setShowUserMenu(false)}
+                        onClick={closeUserMenu}
                         className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       >
                         <Settings className="w-4 h-4" />
@@ -279,7 +195,7 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={toggleMenu}
             className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -300,7 +216,7 @@ export function Navbar() {
                   <Link
                     key={link.name}
                     to={link.href}
-                    onClick={() => setIsOpen(false)}
+                    onClick={closeMenu}
                     className={cn(
                       "block px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                       isActive(link.href)
@@ -312,25 +228,19 @@ export function Navbar() {
                   </Link>
                 ))}
 
-                {/* Dashboard Link - Only show when logged in and has role */}
-                {user && userRole && getDashboardLink() && (
+                {user && userRole && dashboardLink && (
                   <div className="pt-2 border-t border-border">
                     <p className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Dashboard
                     </p>
-                    {(() => {
-                      const link = getDashboardLink()!;
-                      return (
-                        <Link
-                          to={link.href}
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          <link.icon className="w-4 h-4" />
-                          {link.name}
-                        </Link>
-                      );
-                    })()}
+                    <Link
+                      to={dashboardLink.href}
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <dashboardLink.icon className="w-4 h-4" />
+                      {dashboardLink.name}
+                    </Link>
                   </div>
                 )}
 
@@ -367,7 +277,7 @@ export function Navbar() {
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={avatarUrl || undefined} alt="Profile" />
                           <AvatarFallback className="bg-primary/10 text-primary">
-                            {getInitials()}
+                            {initials}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -376,7 +286,7 @@ export function Navbar() {
                         </div>
                       </div>
                       <Button variant="outline" className="w-full" asChild>
-                        <Link to="/settings" onClick={() => setIsOpen(false)}>
+                        <Link to="/settings" onClick={closeMenu}>
                           <Settings className="w-4 h-4 mr-2" />
                           Profile Settings
                         </Link>
@@ -386,7 +296,7 @@ export function Navbar() {
                         className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" 
                         onClick={() => {
                           handleLogout();
-                          setIsOpen(false);
+                          closeMenu();
                         }}
                       >
                         <LogOut className="w-4 h-4 mr-2" />
