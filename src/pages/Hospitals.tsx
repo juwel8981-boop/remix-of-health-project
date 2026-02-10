@@ -7,7 +7,7 @@ import { FacilitiesMap } from "@/components/FacilitiesMap";
 import { supabase } from "@/integrations/supabase/client";
 import { HospitalCardSkeleton } from "@/components/skeletons/HospitalCardSkeleton";
 import { DiagnosticCardSkeleton } from "@/components/skeletons/DiagnosticCardSkeleton";
-import { devDelay } from "@/lib/dev-delay";
+
 
 interface Hospital {
   id: string;
@@ -82,7 +82,6 @@ export default function Hospitals() {
 
   const fetchData = async () => {
     setLoading(true);
-    await devDelay();
     
     // Fetch hospitals
     const { data: hospitalsData, error: hospitalsError } = await supabase
