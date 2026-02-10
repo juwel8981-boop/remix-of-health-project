@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   User, Calendar, FileText, Settings, Users,
-  TrendingUp, CheckCircle2, Newspaper, Loader2, MapPin
+  TrendingUp, CheckCircle2, Newspaper, MapPin
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DoctorVerificationBanner } from "@/components/doctor/DoctorVerificationBanner";
 import { DoctorOverview } from "@/components/doctor/DoctorOverview";
@@ -129,11 +130,7 @@ export default function DoctorDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

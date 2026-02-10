@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import AdminDoctorControls from "@/components/admin/AdminDoctorControls";
+import { DoctorCardSkeleton } from "@/components/skeletons/DoctorCardSkeleton";
 
 interface Doctor {
   id: string;
@@ -478,11 +479,7 @@ export default function Doctors() {
               </div>
 
               {/* Loading State */}
-              {loading && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              )}
+              {loading && <DoctorCardSkeleton count={4} />}
 
               {/* Doctor Cards */}
               {!loading && (

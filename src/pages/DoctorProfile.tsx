@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DoctorProfileActions } from "@/components/doctor/DoctorProfileActions";
 import { DoctorRatingDisplay } from "@/components/doctor/DoctorRatingDisplay";
 import { DoctorReviewSection } from "@/components/doctor/DoctorReviewSection";
+import { DoctorProfileSkeleton } from "@/components/skeletons/DoctorProfileSkeleton";
 
 interface Doctor {
   id: string;
@@ -120,11 +121,7 @@ export default function DoctorProfile() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DoctorProfileSkeleton />;
   }
 
   if (!doctor) {
