@@ -70,56 +70,73 @@ export default function AdminDashboard() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const fetchStats = async () => {
+    try {
+      const { count: totalDoctors } = await supabase
+        .from("doctors")
+        .select("*", { count: "exact", head: true });
+
+      const { count: approvedDoctors } = await supabase
+        .from("doctors")
+        .select("*", { count: "exact", head: true })
+        .eq("verification_status", "approved");
+
+      const { count: pendingDoctors } = await supabase
+        .from("doctors")
+        .select("*", { count: "exact", head: true })
+        .eq("verification_status", "pending");
+
+      const { count: totalPatients } = await supabase
+        .from("patients")
+        .select("*", { count: "exact", head: true });
+
+      const { count: totalPosts } = await supabase
+        .from("health_posts")
+        .select("*", { count: "exact", head: true });
+
+      const { count: approvedPosts } = await supabase
+        .from("health_posts")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "approved");
+
+      setStats({
+        totalDoctors: totalDoctors || 0,
+        approvedDoctors: approvedDoctors || 0,
+        pendingDoctors: pendingDoctors || 0,
+        totalPatients: totalPatients || 0,
+        totalPosts: totalPosts || 0,
+        approvedPosts: approvedPosts || 0,
+      });
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    }
+  };
+
   // Fetch dashboard stats
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Fetch doctors count
-        const { count: totalDoctors } = await supabase
-          .from("doctors")
-          .select("*", { count: "exact", head: true });
-
-        const { count: approvedDoctors } = await supabase
-          .from("doctors")
-          .select("*", { count: "exact", head: true })
-          .eq("verification_status", "approved");
-
-        const { count: pendingDoctors } = await supabase
-          .from("doctors")
-          .select("*", { count: "exact", head: true })
-          .eq("verification_status", "pending");
-
-        // Fetch patients count
-        const { count: totalPatients } = await supabase
-          .from("patients")
-          .select("*", { count: "exact", head: true });
-
-        // Fetch posts count
-        const { count: totalPosts } = await supabase
-          .from("health_posts")
-          .select("*", { count: "exact", head: true });
-
-        const { count: approvedPosts } = await supabase
-          .from("health_posts")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "approved");
-
-        setStats({
-          totalDoctors: totalDoctors || 0,
-          approvedDoctors: approvedDoctors || 0,
-          pendingDoctors: pendingDoctors || 0,
-          totalPatients: totalPatients || 0,
-          totalPosts: totalPosts || 0,
-          approvedPosts: approvedPosts || 0,
-        });
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      }
-    };
-
     if (user) {
       fetchStats();
     }
+  }, [user]);
+
+  // Real-time subscription for doctors table
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('admin-doctors-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'doctors' },
+        () => {
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
 
