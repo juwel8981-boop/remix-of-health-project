@@ -209,7 +209,6 @@ export default function Index() {
                   alt="Healthcare professionals providing quality care"
                   className="relative rounded-3xl shadow-2xl"
                   loading="eager"
-                  fetchPriority="high"
                 />
 
                 {/* Floating Stats Card */}

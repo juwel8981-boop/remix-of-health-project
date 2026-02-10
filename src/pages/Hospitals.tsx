@@ -5,6 +5,8 @@ import { Search, MapPin, Phone, Star, Navigation, Building2, Stethoscope, Chevro
 import { Button } from "@/components/ui/button";
 import { FacilitiesMap } from "@/components/FacilitiesMap";
 import { supabase } from "@/integrations/supabase/client";
+import { HospitalCardSkeleton } from "@/components/skeletons/HospitalCardSkeleton";
+import { DiagnosticCardSkeleton } from "@/components/skeletons/DiagnosticCardSkeleton";
 
 interface Hospital {
   id: string;
@@ -302,9 +304,7 @@ export default function Hospitals() {
       <section className="healthcare-section">
         <div className="healthcare-container">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
+            activeTab === "hospitals" ? <HospitalCardSkeleton count={4} /> : <DiagnosticCardSkeleton count={6} />
           ) : viewMode === "map" ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}

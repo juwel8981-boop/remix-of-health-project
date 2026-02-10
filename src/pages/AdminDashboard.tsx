@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { DashboardSkeleton } from "@/components/skeletons/DashboardSkeleton";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
   Settings, LogOut, MessageSquare, Star, Bell, Sun, Moon
@@ -156,11 +157,7 @@ export default function AdminDashboard() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!user) {
