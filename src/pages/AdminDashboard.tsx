@@ -221,6 +221,37 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* Quick Stats Summary Row - always visible */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Stethoscope className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground leading-none">{stats.totalDoctors}</p>
+                <p className="text-xs text-muted-foreground">Doctors</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-border">
+              <div className="w-9 h-9 rounded-lg bg-secondary/10 flex items-center justify-center">
+                <Users className="w-4 h-4 text-secondary" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground leading-none">{stats.totalPatients}</p>
+                <p className="text-xs text-muted-foreground">Patients</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-background rounded-xl px-4 py-3 border border-amber-300/50">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Stethoscope className="w-4 h-4 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground leading-none">{stats.pendingDoctors}</p>
+                <p className="text-xs text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          </div>
+
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <motion.div
