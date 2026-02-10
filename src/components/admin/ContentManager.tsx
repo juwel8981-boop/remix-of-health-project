@@ -303,6 +303,7 @@ export default function ContentManager() {
                       src={post.image_url} 
                       alt="Post" 
                       className="rounded-lg max-h-48 object-cover w-full"
+                      loading="lazy"
                     />
                   </div>
                 )}
@@ -459,6 +460,7 @@ export default function ContentManager() {
                   src={selectedPost.image_url} 
                   alt="Post" 
                   className="rounded-lg w-full"
+                  loading="lazy"
                 />
               )}
             </div>

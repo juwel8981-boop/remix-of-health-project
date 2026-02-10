@@ -168,6 +168,7 @@ export default function ArticleDetail() {
           src={article.image}
           alt={article.title}
           className="w-full h-full object-cover"
+          loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
         
@@ -204,6 +205,7 @@ export default function ArticleDetail() {
                   src={article.authorImage}
                   alt={article.author}
                   className="w-12 h-12 rounded-full object-cover"
+                  loading="lazy"
                 />
                 <div>
                   <p className="font-semibold text-foreground">{article.author}</p>
@@ -269,6 +271,7 @@ export default function ArticleDetail() {
                 src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face"
                 alt="You"
                 className="w-10 h-10 rounded-full object-cover"
+                loading="lazy"
               />
               <div className="flex-1">
                 <textarea
@@ -297,6 +300,7 @@ export default function ArticleDetail() {
                       src={comment.avatar}
                       alt={comment.user}
                       className="w-10 h-10 rounded-full object-cover"
+                      loading="lazy"
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -325,6 +329,7 @@ export default function ArticleDetail() {
                             src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face"
                             alt="You"
                             className="w-8 h-8 rounded-full object-cover"
+                            loading="lazy"
                           />
                           <div className="flex-1">
                             <textarea
@@ -357,6 +362,7 @@ export default function ArticleDetail() {
                             src={reply.avatar}
                             alt={reply.user}
                             className="w-8 h-8 rounded-full object-cover"
+                            loading="lazy"
                           />
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
