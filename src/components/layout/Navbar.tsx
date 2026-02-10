@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Sun, Moon } from "lucide-react";
+import { Menu, X, Heart, ChevronDown, User, Stethoscope, Shield, LogOut, Settings, Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -196,13 +196,29 @@ export function Navbar() {
 
           {/* CTA Buttons - Always visible on desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <button
+                onClick={() => setTheme("light")}
+                className={cn("p-1.5 rounded-md transition-colors", theme === "light" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                aria-label="Light theme"
+              >
+                <Sun className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setTheme("system")}
+                className={cn("p-1.5 rounded-md transition-colors", theme === "system" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                aria-label="System theme"
+              >
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setTheme("dark")}
+                className={cn("p-1.5 rounded-md transition-colors", theme === "dark" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                aria-label="Dark theme"
+              >
+                <Moon className="w-4 h-4" />
+              </button>
+            </div>
             {user ? (
               <div className="relative">
                 <button
@@ -319,14 +335,32 @@ export function Navbar() {
                 )}
 
                 <div className="pt-4 space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  >
-                    {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                  </Button>
+                  <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("flex-1", theme === "light" && "bg-background shadow-sm")}
+                      onClick={() => setTheme("light")}
+                    >
+                      <Sun className="w-4 h-4 mr-1" /> Light
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("flex-1", theme === "system" && "bg-background shadow-sm")}
+                      onClick={() => setTheme("system")}
+                    >
+                      <Monitor className="w-4 h-4 mr-1" /> System
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("flex-1", theme === "dark" && "bg-background shadow-sm")}
+                      onClick={() => setTheme("dark")}
+                    >
+                      <Moon className="w-4 h-4 mr-1" /> Dark
+                    </Button>
+                  </div>
                   {user ? (
                     <>
                       <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg">
