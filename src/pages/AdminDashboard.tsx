@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   LayoutDashboard, Building2, Stethoscope, Users, FileText,
-  Settings, LogOut, MessageSquare, Star, Bell, Sun, Moon, Monitor
+  Settings, LogOut, MessageSquare, Star, Bell, Sun, Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -217,10 +217,10 @@ export default function AdminDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start text-background/70 hover:text-background hover:bg-background/10"
-              onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             >
-              {theme === "dark" ? <Sun className="w-5 h-5 mr-3" /> : theme === "system" ? <Monitor className="w-5 h-5 mr-3" /> : <Moon className="w-5 h-5 mr-3" />}
-              {theme === "dark" ? "Light Mode" : theme === "system" ? "System Theme" : "Dark Mode"}
+              {theme === "dark" ? <Sun className="w-5 h-5 mr-3" /> : <Moon className="w-5 h-5 mr-3" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </Button>
             <Button 
               variant="ghost" 
