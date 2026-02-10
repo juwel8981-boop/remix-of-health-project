@@ -73,32 +73,21 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const { count: totalDoctors } = await supabase
-        .from("doctors")
-        .select("*", { count: "exact", head: true });
-
-      const { count: approvedDoctors } = await supabase
-        .from("doctors")
-        .select("*", { count: "exact", head: true })
-        .eq("verification_status", "approved");
-
-      const { count: pendingDoctors } = await supabase
-        .from("doctors")
-        .select("*", { count: "exact", head: true })
-        .eq("verification_status", "pending");
-
-      const { count: totalPatients } = await supabase
-        .from("patients")
-        .select("*", { count: "exact", head: true });
-
-      const { count: totalPosts } = await supabase
-        .from("health_posts")
-        .select("*", { count: "exact", head: true });
-
-      const { count: approvedPosts } = await supabase
-        .from("health_posts")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "approved");
+      const [
+        { count: totalDoctors },
+        { count: approvedDoctors },
+        { count: pendingDoctors },
+        { count: totalPatients },
+        { count: totalPosts },
+        { count: approvedPosts },
+      ] = await Promise.all([
+        supabase.from("doctors").select("*", { count: "exact", head: true }),
+        supabase.from("doctors").select("*", { count: "exact", head: true }).eq("verification_status", "approved"),
+        supabase.from("doctors").select("*", { count: "exact", head: true }).eq("verification_status", "pending"),
+        supabase.from("patients").select("*", { count: "exact", head: true }),
+        supabase.from("health_posts").select("*", { count: "exact", head: true }),
+        supabase.from("health_posts").select("*", { count: "exact", head: true }).eq("status", "approved"),
+      ]);
 
       setStats({
         totalDoctors: totalDoctors || 0,
