@@ -33,35 +33,17 @@ export function useAuthUser(): AuthUser {
   }, []);
 
   const fetchUserRole = useCallback(async (userId: string) => {
-    // Check admin first
-    const { data: adminRole } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    
-    if (adminRole) { setUserRole("admin"); return; }
+    // Fetch all role checks in parallel for speed
+    const [adminResult, doctorResult, patientResult] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
+      supabase.from("doctors").select("id").eq("user_id", userId).maybeSingle(),
+      supabase.from("patients").select("id").eq("user_id", userId).maybeSingle(),
+    ]);
 
-    // Check doctor
-    const { data: doctorData } = await supabase
-      .from("doctors")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (doctorData) { setUserRole("doctor"); return; }
-
-    // Check patient
-    const { data: patientData } = await supabase
-      .from("patients")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (patientData) { setUserRole("patient"); return; }
-
-    setUserRole(null);
+    if (adminResult.data) { setUserRole("admin"); }
+    else if (doctorResult.data) { setUserRole("doctor"); }
+    else if (patientResult.data) { setUserRole("patient"); }
+    else { setUserRole(null); }
   }, []);
 
   useEffect(() => {

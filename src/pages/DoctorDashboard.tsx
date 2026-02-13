@@ -68,28 +68,20 @@ export default function DoctorDashboard() {
         return;
       }
 
-      // Fetch doctor profile
-      const { data: doctorData } = await supabase
-        .from("doctors")
-        .select("id, full_name, specialization, verification_status, rejection_reason")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Fetch doctor profile and avatar in parallel
+      const [doctorResult, profileResult] = await Promise.all([
+        supabase.from("doctors").select("id, full_name, specialization, verification_status, rejection_reason").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle(),
+      ]);
       
-      if (doctorData) {
-        setDoctorProfile(doctorData);
+      if (doctorResult.data) {
+        setDoctorProfile(doctorResult.data);
       }
 
-      // Fetch avatar
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-      
-      if (profile?.avatar_url) {
-        const url = profile.avatar_url.includes('?') 
-          ? profile.avatar_url 
-          : `${profile.avatar_url}?t=${Date.now()}`;
+      if (profileResult.data?.avatar_url) {
+        const url = profileResult.data.avatar_url.includes('?') 
+          ? profileResult.data.avatar_url 
+          : `${profileResult.data.avatar_url}?t=${Date.now()}`;
         setAvatarUrl(url);
       }
 

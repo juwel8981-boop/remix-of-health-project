@@ -84,30 +84,30 @@ export default function Hospitals() {
   const fetchData = async () => {
     setLoading(true);
     
-    // Fetch hospitals
-    const { data: hospitalsData, error: hospitalsError } = await supabase
-      .from("hospitals")
-      .select("*")
-      .eq("status", "approved")
-      .order("rating", { ascending: false });
+    // Fetch hospitals and diagnostics in parallel with selective columns
+    const [hospitalsResult, diagnosticsResult] = await Promise.all([
+      supabase
+        .from("hospitals")
+        .select("id, name, type, location, address, phone, rating, beds, specialties, status, image_url, latitude, longitude")
+        .eq("status", "approved")
+        .order("rating", { ascending: false }),
+      supabase
+        .from("diagnostics")
+        .select("id, name, location, address, phone, rating, services, status, image_url, open_hours")
+        .eq("status", "approved")
+        .order("rating", { ascending: false }),
+    ]);
 
-    if (hospitalsError) {
-      console.error("Error fetching hospitals:", hospitalsError);
+    if (hospitalsResult.error) {
+      console.error("Error fetching hospitals:", hospitalsResult.error);
     } else {
-      setHospitals(hospitalsData || []);
+      setHospitals(hospitalsResult.data || []);
     }
 
-    // Fetch diagnostics
-    const { data: diagnosticsData, error: diagnosticsError } = await supabase
-      .from("diagnostics")
-      .select("*")
-      .eq("status", "approved")
-      .order("rating", { ascending: false });
-
-    if (diagnosticsError) {
-      console.error("Error fetching diagnostics:", diagnosticsError);
+    if (diagnosticsResult.error) {
+      console.error("Error fetching diagnostics:", diagnosticsResult.error);
     } else {
-      const parsed = (diagnosticsData || []).map(d => ({
+      const parsed = (diagnosticsResult.data || []).map(d => ({
         ...d,
         services: Array.isArray(d.services) ? (d.services as unknown as ServiceWithPrice[]) : []
       }));

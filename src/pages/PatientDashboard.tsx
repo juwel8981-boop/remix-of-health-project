@@ -87,39 +87,23 @@ export default function PatientDashboard() {
     const fetchPatientData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase
-          .from('patients')
-          .select('full_name, blood_group, date_of_birth, weight, height')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (data) {
-          setPatientData(data);
-        }
+        // Fetch all patient data in parallel
+        const [patientResult, profileResult, ehrResult, apptResult] = await Promise.all([
+          supabase.from('patients').select('full_name, blood_group, date_of_birth, weight, height').eq('user_id', user.id).maybeSingle(),
+          supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle(),
+          supabase.from('ehr_records').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+          supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('patient_id', user.id).gte('appointment_date', new Date().toISOString().split('T')[0]),
+        ]);
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (profile?.avatar_url) {
-          const url = profile.avatar_url.includes('?') 
-            ? profile.avatar_url 
-            : `${profile.avatar_url}?t=${Date.now()}`;
+        if (patientResult.data) setPatientData(patientResult.data);
+        if (profileResult.data?.avatar_url) {
+          const url = profileResult.data.avatar_url.includes('?') 
+            ? profileResult.data.avatar_url 
+            : `${profileResult.data.avatar_url}?t=${Date.now()}`;
           setAvatarUrl(url);
         }
-
-        const { count: ehrCountData } = await supabase
-          .from('ehr_records')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id);
-        setEhrCount(ehrCountData || 0);
-
-        const { count: apptCount } = await supabase
-          .from('appointments')
-          .select('id', { count: 'exact', head: true })
-          .eq('patient_id', user.id)
-          .gte('appointment_date', new Date().toISOString().split('T')[0]);
-        setAppointmentCount(apptCount || 0);
+        setEhrCount(ehrResult.count || 0);
+        setAppointmentCount(apptResult.count || 0);
       }
     };
     fetchPatientData();

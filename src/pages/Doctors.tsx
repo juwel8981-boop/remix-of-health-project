@@ -143,7 +143,7 @@ export default function Doctors() {
   const fetchChambers = async (doctorIds: string[]) => {
     const { data, error } = await supabase
       .from("doctor_chambers")
-      .select("*")
+      .select("id, doctor_id, name, address, phone, days, timing, appointment_fee, serial_available")
       .in("doctor_id", doctorIds);
 
     if (!error && data) {
